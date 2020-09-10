@@ -1,0 +1,31 @@
+const colors = {
+  amber: '#F18E00',
+  backgroundYellow: '#F1EEC7',
+  baseGrey: '#D5D5D6',
+  blueGrey: '#828DA9',
+  blueGreyLight: '#C4E2F0',
+  darkerPurple: '#200B22',
+  darkGrey: '#3B3B3B',
+  darkPurple: '#3C1540',
+  errorRed: '#B20000',
+  errorRedTint: '#F4E2DF',
+  greenBackground: '#F6F9F2',
+  hotPink: '#FF267E',
+  lighterGrey: '#F8F8F8',
+  lighterPurple: '#F0E7F1',
+  lightGrey: '#EBEBEB',
+  lilac: '#9658A1',
+  lilac50: 'rgba(150, 88, 161, 0.5)',
+  notificationYellowTint: '#FFF8EC',
+  paleGrey: '#D5D5D6',
+  pink: '#D2267E',
+  primaryPurple: '#6B11A5',
+  resultYellow: '#F4F48B',
+  shareBlue: '#6398C9',
+  validationGreen: '#00A606',
+  validationGreenTint: '#EDF5EE',
+  white: '#FFFFFF',
+  transparent: 'transparent'
+};
+
+export default colors;
