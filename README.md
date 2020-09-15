@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+0. [Context](#context)
 1. [Getting Started](#getting-started)
 2. [Setup to run the application on a real iPhone](#setup-to-run-the-application-on-a-real-iPhone)
 3. [Setup to simulate the application on an iPhone](#setup-to-simulate-the-application-on-an-iphone)
@@ -9,6 +10,15 @@
 5. [Setup to emulate the application on an Android](#setup-to-emulate-the-application-on-an-android)
 6. [Running the applications locally](#running-the-applications-locally)
 7. [E2E Testing](#e2e-testing)
+
+## Context
+The COVID tracker application works with a series of other systems, and is indicated by the yellow box 'app' on the Citizen's mobile phone:
+
+![COVID tracker in context](https://github.com/NES-Digital-Service/protect-scotland/blob/master/app_context.png)
+
+The system described as the nearform app back end is shown here:
+
+![COVID tracker app back end](https://github.com/NES-Digital-Service/protect-scotland/blob/master/app_server_side.png)
 
 ## Getting Started
 
