@@ -12,7 +12,11 @@ import {
 import {useTranslation} from 'react-i18next';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-community/async-storage';
-import {useExposure} from 'react-native-exposure-notification-service';
+import {
+  useExposure,
+  getVersion,
+  Version
+} from 'react-native-exposure-notification-service';
 
 import {ModalHeader} from '../molecules/modal-header';
 
@@ -23,7 +27,7 @@ import {ClearContactsModal} from '../molecules/modal/clear-contacts';
 import Spacing from '../atoms/spacing';
 import {SPACING_BOTTOM} from '../../theme/layouts/shared';
 import {useSafeArea} from 'react-native-safe-area-context';
-import {HIDE_DEBUG, BUILD_VERSION} from '@env';
+import {HIDE_DEBUG} from '@env';
 
 const ArrowIcon = require('../../assets/images/icon-arrow-white/image.png');
 const SettingsIcon = require('../../assets/images/icon-settings-white/image.png');
@@ -35,6 +39,7 @@ export const Settings = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
   const [clear, setClear] = useState(false);
+  const [version, setVersion] = useState<Version>();
   const {contacts, getCloseContacts, simulateExposure} = useExposure();
   const [simulated, setSimulated] = useState(false);
   const insets = useSafeArea();
@@ -53,10 +58,17 @@ export const Settings = () => {
   };
 
   useEffect(() => {
-    const id = setTimeout(getCloseContacts, (SIMULATION_DELAY + 0.5) * 1000);
-    return () => clearTimeout(id);
+    setTimeout(getCloseContacts, (SIMULATION_DELAY + 0.5) * 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulated]);
+
+  useEffect(() => {
+    const getVer = async () => {
+      const ver = await getVersion();
+      setVersion(ver);
+    };
+    getVer();
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -192,13 +204,13 @@ export const Settings = () => {
           onBackButtonPress={() => setClear(false)}
         />
       )}
-      {!!BUILD_VERSION && (
+      {!!version && (
         <>
           <Spacing s={24} />
           <Text
             style={styles.version}
-            accessibilityHint={t('common:version', {version: BUILD_VERSION})}>
-            App version: {BUILD_VERSION}
+            accessibilityHint={t('common:version', {version: version.display})}>
+            App version: {version.display}
           </Text>
         </>
       )}

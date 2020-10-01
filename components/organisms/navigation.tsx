@@ -32,6 +32,8 @@ import {Tests} from '../views/tests';
 import {DataPolicy} from '../views/data-policy';
 import {Debug} from '../views/debug';
 import {ScotlandState} from 'App';
+import {Pause} from '../views/pause';
+import {notificationHooks} from '../../services/notifications';
 
 const Stack = createStackNavigator();
 
@@ -230,6 +232,18 @@ const Screens = (t: TFunction, user: string | null) => {
         header,
         cardStyle: {backgroundColor: colors.white}
       }
+    },
+    {
+      name: ScreenNames.pause,
+      component: Pause,
+      options: {
+        title: t('viewNames:pause'),
+        header,
+        cardStyle: {},
+        cardStyleInterpolator: CardStyleInterpolators.forModalPresentationIOS,
+        gestureEnabled: true,
+        gestureDirection: 'vertical'
+      }
     }
   ];
 };
@@ -294,6 +308,7 @@ const Navigation: FC<Navigation> = ({
   return (
     <NavigationContainer
       ref={(e) => {
+        notificationHooks.navigation = e as NavigationContainerRef;
         (navigationRef as MutableRefObject<NavigationContainerRef | null>).current = e;
       }}>
       <Stack.Navigator

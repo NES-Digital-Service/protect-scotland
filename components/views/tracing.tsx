@@ -15,6 +15,7 @@ import {
   useExposure,
   StatusState
 } from 'react-native-exposure-notification-service';
+import {format, isToday, isTomorrow} from 'date-fns';
 
 import {ModalHeader} from '../molecules/modal-header';
 
@@ -24,18 +25,27 @@ import Markdown from '../atoms/markdown';
 import RoundedBox from '../atoms/rounded-box';
 import {ScreenNames} from '../../navigation';
 import GoToSettings from '../molecules/go-to-settings';
+import Button from '../atoms/button';
+import {useReminder} from '../../providers/reminder';
 
 const TracingIcon = require('../../assets/images/tracing-active/image.png');
 const IconTracingActive = require('../../assets/images/icon-tracing-active-big/image.png');
 const IconTracingInactive = require('../../assets/images/icon-tracing-inactive-big/image.png');
 const TracingIllustration = require('../../assets/images/tracing-illustration/image.png');
 const CloseIcon = require('../../assets/images/icon-close-green/image.png');
+const IconPaused = require('../../assets/images/icon-paused/image.png');
 
 export const Tracing: FC = () => {
+  const {checked, paused, deleteReminder} = useReminder();
   const {t} = useTranslation();
   const navigation = useNavigation();
-  const {enabled, status, contacts} = useExposure();
+  const {enabled, status, contacts, start} = useExposure();
   const tracingActive = enabled && status.state === StatusState.active;
+  const pauseDate = new Date(Number(paused));
+
+  if (!checked) {
+    return <ScrollView style={styles.container} />;
+  }
 
   const renderActive = () => (
     <>
@@ -93,6 +103,58 @@ export const Tracing: FC = () => {
     </>
   );
 
+  const renderPaused = () => (
+    <>
+      <Text style={[styles.heading, styles.notActive]}>
+        {t('tracing:status:heading')}
+      </Text>
+      <Spacing s={20} />
+      <View style={styles.row}>
+        <View>
+          <Image
+            style={styles.moduleImage as ImageStyle}
+            source={IconPaused}
+            accessibilityIgnoresInvertColors={false}
+          />
+        </View>
+        <View>
+          <Text
+            style={[
+              styles.text,
+              styles.heading,
+              styles.status,
+              styles.notActive
+            ]}>
+            {t('tracing:paused:title')}
+          </Text>
+        </View>
+      </View>
+      <Spacing s={20} />
+      <Text style={styles.reminder}>
+        {t('tracing:paused:reminder')} {format(pauseDate, 'HH:mm')}{' '}
+        {isToday(pauseDate)
+          ? t('common:today')
+          : isTomorrow(pauseDate)
+          ? t('common:tomorrow')
+          : ''}
+      </Text>
+      <Markdown markdownStyles={inactiveMarkdownStyles}>
+        {t('tracing:paused:text')}
+      </Markdown>
+      <Spacing s={20} />
+      <Button
+        type="primary"
+        variant="dark"
+        rounded
+        onPress={() => {
+          start();
+          deleteReminder();
+        }}>
+        {t('tracing:paused:buttonLabel')}
+      </Button>
+    </>
+  );
+
   return (
     <ScrollView style={styles.container}>
       <ModalHeader
@@ -133,15 +195,44 @@ export const Tracing: FC = () => {
         <Spacing s={30} />
         <Markdown>{t('tracing:additional', {link: t('links:o')})}</Markdown>
         <Spacing s={34} />
-        <RoundedBox style={tracingActive ? styles.active : undefined}>
-          {tracingActive ? renderActive() : renderInactive()}
+        <RoundedBox
+          style={tracingActive && !paused ? styles.active : undefined}>
+          {paused
+            ? renderPaused()
+            : tracingActive
+            ? renderActive()
+            : renderInactive()}
         </RoundedBox>
         <Spacing s={20} />
+        {!paused && tracingActive && (
+          <Button
+            type="secondary"
+            rounded
+            textColor={colors.validationGreen}
+            onPress={() => navigation.navigate(ScreenNames.pause)}
+            style={styles.button}
+            buttonStyle={styles.buttonStyle}>
+            I want to pause Tracing
+          </Button>
+        )}
       </View>
-      <Spacing s={80} />
+      <Spacing s={120} />
     </ScrollView>
   );
 };
+
+const inactiveMarkdownStyles = StyleSheet.create({
+  text: {
+    ...text.default,
+    color: colors.darkGrey,
+    fontSize: 15,
+    lineHeight: 25
+  },
+  // @ts-ignore
+  strong: {
+    ...text.defaultBold
+  }
+});
 
 const notificationMarkdownStyles = StyleSheet.create({
   text: {
@@ -176,7 +267,7 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   heading: {
-    ...text.h4Heading
+    ...text.h3Heading
   },
   active: {
     color: colors.validationGreen,
@@ -190,8 +281,14 @@ const styles = StyleSheet.create({
   status: {
     ...text.h1Heading
   },
+  text: {
+    ...text.smallerParagraph,
+    lineHeight: 20
+  },
   moduleImage: {
-    marginRight: 11
+    marginRight: 11,
+    width: 40,
+    height: 40
   },
   notification: {
     borderColor: colors.errorRed,
@@ -204,5 +301,22 @@ const styles = StyleSheet.create({
   },
   bold: {
     ...text.defaultBold
+  },
+  button: {
+    width: '100%'
+  },
+  buttonStyle: {
+    backgroundColor: 'transparent',
+    borderColor: colors.validationGreen,
+    borderStyle: 'solid',
+    borderWidth: 1
+  },
+  reminder: {
+    ...text.defaultBold,
+    color: colors.errorRed
+  },
+  underline: {
+    textDecorationColor: colors.errorRed,
+    textDecorationLine: 'underline'
   }
 });

@@ -9,6 +9,7 @@ import {colors} from '../../theme';
 import {Tile} from './tile';
 import Spacing from '../atoms/spacing';
 import {ScreenNames} from '../../navigation';
+import {useReminder} from '../../providers/reminder';
 
 const TracingIcon = require('../../assets/images/tracing/image.png');
 const InactiveTracingIcon = require('../../assets/images/tracing-inactive/image.png');
@@ -16,6 +17,7 @@ const ContactTracingIcon = require('../../assets/images/tracing-contact/image.pn
 const CommentIcon = require('../../assets/images/icon-comment/image.png');
 const CommunityIcon = require('../../assets/images/icon-community-white/image.png');
 const JarIcon = require('../../assets/images/icon-jar/image.png');
+const PausedIcon = require('../../assets/images/grid-paused/image.png');
 
 interface Grid {
   onboarded: Boolean;
@@ -31,28 +33,37 @@ export const Grid: FC<Grid> = ({
   onboardingCallback
 }) => {
   const {contacts, enabled, status} = useExposure();
+  const {paused} = useReminder();
   const hasContact = contacts && contacts.length > 0;
   const active = enabled && status.state === StatusState.active;
   const fontScale = PixelRatio.getFontScale();
 
   const tracingIcon = hasContact
     ? ContactTracingIcon
+    : paused
+    ? PausedIcon
     : active
     ? TracingIcon
     : InactiveTracingIcon;
 
   const tracingLabel = hasContact
     ? 'dashboard:tracing:contact'
+    : paused
+    ? 'dashboard:tracing:paused'
     : 'dashboard:tracing:label';
 
   const tracingHint = hasContact
     ? 'dashboard:tracing:contactHint'
+    : paused
+    ? 'dashboard:tracing:pausedHint'
     : active
     ? 'dashboard:tracing:active'
     : 'dashboard:tracing:inactive';
 
   const tracingBackground = hasContact
     ? colors.errorRed
+    : paused
+    ? colors.lightGray
     : active
     ? colors.validationGreen
     : colors.darkGrey;

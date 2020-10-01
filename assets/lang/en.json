@@ -3,7 +3,7 @@
     "solutionText": "We are working towards a solution",
     "testingInstructions": "The rest of your household do not need to self-isolate, unless you begin to experience symptoms or receive a positive test result.",
     "helplineNumber": "0800 028 2816",
-    "helplineString": "NHS 24 Covid Helpline on",
+    "helplineString": "National Covid Helpline on",
     "contactTracingNumber": "0800 030 8012",
     "closeContactAssistance": "They can help you understand this message and its implications. If you think this message is incorrect you have the right to challenge it by calling the above number. For further information please see our [privacy notice]({{ link }})."
   },
@@ -45,7 +45,7 @@
     "goToSettings": "Go to device ‘Settings’",
     "goToSettingsHint": "Go to device ‘Settings’",
     "turnOnBtnHint": "Turn on COVID-19 Exposure Notifications",
-    "turnOnBtnLabel": "Turn on",
+    "turnOnBtnLabel": "Go to device 'Settings'",
     "ok": {
       "label": "OK",
       "hint": "Close the pop-up"
@@ -54,7 +54,9 @@
       "title": "Please try again",
       "description": "Sorry, that didn’t work properly.\nPlease check that you have a network connection and try again."
     },
-    "version": "This is app version {{version}}"
+    "version": "This is app version {{version}}",
+    "today": "today",
+    "tomorrow": "tomorrow"
   },
   "links": {
     "a": "https://www.tsscot.co.uk/contact-tracing-scams/",
@@ -68,7 +70,8 @@
     "l": "https://protect.scot/index.html",
     "m": "https://protect.scot/privacy-policy-app",
     "n": "https://protect.scot/terms-and-conditions",
-    "o": "https://protect.scot/faq"
+    "o": "https://protect.scot/faq",
+    "p": "https://www.gov.scot/publications/coronavirus-covid-19-local-measures/pages/overview/"
   },
   "modals": {
     "exposureNotifications": {
@@ -147,7 +150,8 @@
     "testsAdd": "Add test result",
     "testsResult": "Test result verified",
     "dataPolicy": "Data Privacy Information",
-    "debug": "Debug"
+    "debug": "Debug",
+    "pause": "Pause Tracing"
   },
   "onboarding": {
     "whyUse": {
@@ -247,10 +251,15 @@
   "dashboard": {
     "message": {
       "standard": "You can close this app and it will keep working",
-      "bluetooth": "Please keep Bluetooth on",
-      "inactive": "Tracing is not active, so this app won’t work"
+      "bluetooth": {
+        "ios": "Please keep Bluetooth on",
+        "android": "Keep Bluetooth and Location on"
+      },
+      "inactive": "Tracing is not active, so this app won’t work",
+      "paused": "Tracing is not active, so this app won’t work",
+      "pausedSupplemental": "Tracing paused"
     },
-    "exposed": "You must self-isolate for {{ isolationDuration }} days",
+    "exposed": "You must self-isolate",
     "exposedAction": "Next",
     "isolationComplete": "Your isolation period is complete.",
     "isolationCompleteSupplemental": "The app has returned to normal usage",
@@ -269,7 +278,9 @@
       "active": "Active",
       "inactive": "Not active",
       "contact": "Tracing",
-      "contactHint": "Close Contact Alert"
+      "contactHint": "Close Contact Alert",
+      "paused": "Tracing",
+      "pausedHint": "Paused"
     },
     "community": {
       "label": "Share and Protect"
@@ -301,7 +312,14 @@
     "turnOn2": "‘COVID-19 Exposure Notifications’",
     "inactiveMessage1": "If you want to stop tracing and opt out select **‘Leave’** from the **‘Settings’** menu in this app.",
     "notificationTitle": "Action required",
-    "notificationBody": "You have been in **close contact with someone who has COVID-19**"
+    "notificationBody": "You have been in **close contact with someone who has COVID-19**",
+    "paused": {
+      "title": "Paused",
+      "reminder": "Reminder at",
+      "text": "Tracing is not active, so this app is not exchanging any data with other users’ apps.",
+      "buttonLabel": "Restart Tracing",
+      "buttonHint": "Restarts contact tracing after being paused"
+    }
   },
   "community": {
     "heading": "Share and Protect",
@@ -333,9 +351,9 @@
   },
   "closeContact": {
     "title": "Action Required",
-    "warning": "You must self-isolate for {{ isolationDuration }} days",
-    "body1": "You must **stay at home and self-isolate** because you have had contact with someone who has tested positive for COVID-19. The last known exposure date is {{ exposureDate }}. This is day 1 of the {{ isolationDuration }} day isolation period. The isolation period ends on day {{ isolationEnd }}.",
-    "body2": "{{ testingInstructions }}\n\n # \n\nFor specific local/regional guidance on isolation and lockdowns, please see [FAQs]({{ link }})",
+    "warning": "You must self-isolate",
+    "body1": "You must self-isolate for {{ isolationDuration }} days after a close contact with a positive case. The last known exposure date is {{exposureDate}}. This exposure date counts as day 1 of the {{ isolationDuration }} day isolation period. The isolation period ends on day {{ isolationEnd }}.",
+    "body2": "{{ testingInstructions }}\n\n # \n\nFor specific local/regional guidance on isolation and lockdowns, please see **[COVID-19 Local Measures]({{ link }})**",
     "link1": "What is a close contact?",
     "link1Hint": "Opens a link with close contact information",
     "link2": "How do I self-isolate?",
@@ -449,5 +467,17 @@
   "dataPolicy": {
     "title": "Data Privacy Information Notice",
     "body": "The full details of the privacy notice can be read at [{{ link }}]({{ link }})"
+  },
+  "pause": {
+    "title": "Pause Tracing",
+    "body": "There are some situations where you may wish to temporarily suspend proximity tracing, e.g. if you work in a clinical setting, wearing medical grade PPE.",
+    "label": "For more information see [FAQs]({{ link }})",
+    "setTimeButton": "Set a time for reminder",
+    "button": "Pause Tracing now",
+    "modalHeader": "Set a time"
+  },
+  "reminder": {
+    "title": "REMINDER: Restart Tracing",
+    "message": "Tap here to open the app. Then tap `Restart Tracing` to activate contact tracing"
   }
 }

@@ -11,7 +11,7 @@ import {
 import {colors} from '../../theme';
 
 export type ButtonTypes = 'primary' | 'secondary' | 'link' | 'back';
-export type ButtonVariants = 'inverted' | 'dark';
+export type ButtonVariants = 'inverted' | 'dark' | 'green';
 
 interface ButtonColors {
   shadow: string;
@@ -24,6 +24,7 @@ interface ButtonColors {
 interface ButtonProps {
   type?: ButtonTypes;
   variant?: ButtonVariants;
+  rounded?: boolean;
   disabled?: boolean;
   onPress: () => void;
   style?: ViewStyle;
@@ -39,6 +40,7 @@ interface ButtonProps {
 const Button: React.FC<ButtonProps> = ({
   type = 'primary',
   variant,
+  rounded = false,
   disabled = false,
   onPress,
   style,
@@ -58,12 +60,14 @@ const Button: React.FC<ButtonProps> = ({
         return {
           ...buttonColors.primary,
           ...(variant === 'inverted' && buttonColors.primaryInverted),
-          ...(variant === 'dark' && buttonColors.primaryDark)
+          ...(variant === 'dark' && buttonColors.primaryDark),
+          ...(variant === 'green' && buttonColors.primaryGreen)
         };
       case 'secondary':
         return {
           ...buttonColors.secondary,
-          ...(variant === 'dark' && buttonColors.secondaryDark)
+          ...(variant === 'dark' && buttonColors.secondaryDark),
+          ...(variant === 'green' && buttonColors.secondaryGreen)
         };
       case 'back':
         return buttonColors.back;
@@ -106,6 +110,7 @@ const Button: React.FC<ButtonProps> = ({
         type !== 'secondary' && {backgroundColor},
         type === 'link' && styles.wrapperLink,
         type === 'back' && styles.wrapperBack,
+        rounded && styles.rounded,
         !!width && {width},
         style
       ]}>
@@ -124,6 +129,8 @@ const Button: React.FC<ButtonProps> = ({
           },
           type === 'link' && styles.buttonLink,
           type === 'back' && styles.buttonBack,
+          variant === 'green' && styles.buttonGreen,
+          rounded && styles.rounded,
           buttonStyle
         ]}
         accessibilityRole="button"
@@ -167,6 +174,12 @@ const buttonColors = {
     text: colors.white,
     background: colors.darkGrey
   },
+  primaryGreen: {
+    shadow: colors.white,
+    text: colors.white,
+    background: colors.validationGreen,
+    border: colors.validationGreen
+  },
   secondary: {
     shadow: colors.primaryPurple,
     text: colors.primaryPurple,
@@ -180,6 +193,12 @@ const buttonColors = {
     background: colors.transparent,
     pressedText: colors.white,
     border: colors.darkGrey
+  },
+  secondaryGreen: {
+    shadow: colors.white,
+    text: colors.validationGreen,
+    background: colors.white,
+    border: colors.validationGreen
   },
   back: {
     shadow: colors.white,
@@ -223,6 +242,12 @@ const styles = StyleSheet.create({
     minWidth: 30,
     minHeight: 30,
     borderRadius: 15
+  },
+  buttonGreen: {
+    borderWidth: 1
+  },
+  rounded: {
+    borderRadius: 10
   },
   text: {
     textAlign: 'center',

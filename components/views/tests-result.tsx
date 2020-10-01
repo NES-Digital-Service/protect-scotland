@@ -81,19 +81,20 @@ export const TestsResult: FC<TestsResultProps> = ({navigation, route}) => {
               hint={t('tests:result:resubmitHint')}>
               {t('tests:result:resubmitLabel')}
             </Button>
-            <Spacing s={20} />
+            <Spacing s={45} />
           </>
         )}
         <Button
           onPress={handleDone}
           label={t('tests:result:doneLabel')}
           hint={t('tests:result:doneHint')}
-          type={dontShare ? 'secondary' : undefined}>
+          type={dontShare ? 'link' : undefined}
+          textColor={dontShare ? colors.darkerPurple : undefined}>
           {t('common:done')}
         </Button>
         {dontShare && (
           <>
-            <Spacing s={47} />
+            <Spacing s={64} />
             <ActionCard
               inverted
               content={t('tests:view:tellMore')}

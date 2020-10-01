@@ -2,11 +2,10 @@ import React, {FC} from 'react';
 import {ScrollView, Text, StyleSheet, Platform, Linking} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import * as WebBrowser from 'expo-web-browser';
-import * as Localization from 'expo-localization';
-import {
-  useExposure,
-  CloseContact as CloseContactType
-} from 'react-native-exposure-notification-service';
+import {useExposure} from 'react-native-exposure-notification-service';
+import sub from 'date-fns/sub';
+import format from 'date-fns/format';
+import maxBy from 'lodash/maxBy';
 
 import {ModalHeader} from '../molecules/modal-header';
 import Spacing from '../atoms/spacing';
@@ -41,38 +40,32 @@ export const CloseContact: FC<CloseContactProps> = () => {
   } = useSettings();
   PushNotification.setApplicationIconBadgeNumber(0);
 
-  const latestExposure = new Date(
-    Math.max.apply(
-      null,
-      (contacts || []).map((e: CloseContactType) => {
-        return (new Date(Number(e.exposureAlertDate)) as unknown) as number;
-      })
-    )
+  const latestExposure = maxBy(contacts, (contact) =>
+    Number(contact.exposureAlertDate)
   );
 
   return (
     <ScrollView style={styles.container}>
       <ModalHeader type="inline" heading={t('closeContact:title')} />
-      <Text style={styles.warning}>
-        {t('closeContact:warning', {isolationDuration})}
-      </Text>
+      <Text style={styles.warning}>{t('closeContact:warning')}</Text>
       <Spacing s={32} />
       <Markdown markdownStyles={leaderMarkdownStyles}>
         {t('closeContact:body1', {
           isolationDuration,
           isolationEnd,
-          exposureDate: latestExposure.valueOf()
-            ? latestExposure.toLocaleDateString(Localization.locale, {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-              })
+          exposureDate: latestExposure
+            ? format(
+                sub(Number(latestExposure.exposureAlertDate), {
+                  days: latestExposure.daysSinceLastExposure
+                }),
+                'd MMM yyyy'
+              )
             : undefined
         })}
       </Markdown>
       <Spacing s={24} />
       <Markdown markdownStyles={textMarkdownStyles}>
-        {t('closeContact:body2', {testingInstructions, link: t('links:o')})}
+        {t('closeContact:body2', {testingInstructions, link: t('links:p')})}
       </Markdown>
       <Spacing s={24} />
       <ArrowLink

@@ -1,10 +1,11 @@
 import {Platform} from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-// import {fetch} from 'react-native-ssl-pinning';
+import {fetch} from 'react-native-ssl-pinning';
 import NetInfo from '@react-native-community/netinfo';
 import RNGoogleSafetyNet from 'react-native-google-safetynet';
 import RNIOS11DeviceCheck from 'react-native-ios11-devicecheck';
-import {SAFETYNET_KEY, BUILD_VERSION, ENV, TEST_TOKEN} from '@env';
+import {SAFETYNET_KEY, ENV, TEST_TOKEN} from '@env';
+import {getVersion} from 'react-native-exposure-notification-service';
 
 import {isMountedRef, navigationRef, ScreenNames} from '../../navigation';
 import {urls} from '../../constants/urls';
@@ -68,11 +69,11 @@ export const request = async (url: string, cfg: any) => {
   let resp;
   try {
     resp = await fetch(url, {
-      ...config // ,
-      // timeoutInterval: 30000,
-      // sslPinning: {
-      //  certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
-      // }
+      ...config,
+      timeoutInterval: 30000,
+      sslPinning: {
+        certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
+      }
     });
     isUnauthorised = resp && resp.status === 401;
   } catch (e) {
@@ -90,11 +91,11 @@ export const request = async (url: string, cfg: any) => {
     };
 
     return fetch(url, {
-      ...newConfig // ,
-      // timeoutInterval: 30000,
-      // sslPinning: {
-      //  certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
-      // }
+      ...newConfig,
+      timeoutInterval: 30000,
+      sslPinning: {
+        certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
+      }
     });
   }
 
@@ -216,8 +217,8 @@ export async function saveMetric({event = ''}) {
     if (!analyticsOptin || (analyticsOptin && analyticsOptin !== 'true')) {
       return false;
     }
+    const version = await getVersion();
     const os = Platform.OS;
-    const version = BUILD_VERSION;
     const req = await request(`${urls.api}/metrics`, {
       authorizationHeaders: true,
       method: 'POST',
@@ -226,7 +227,7 @@ export async function saveMetric({event = ''}) {
       },
       body: JSON.stringify({
         os,
-        version,
+        version: version.display,
         event
       })
     });

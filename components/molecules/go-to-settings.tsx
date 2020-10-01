@@ -49,6 +49,7 @@ const GoToSettings: FC = () => {
   return (
     <Button
       variant="dark"
+      rounded
       onPress={async () =>
         ensUnknown
           ? await askPermissions()

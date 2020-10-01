@@ -25,7 +25,8 @@ const colors = {
   validationGreen: '#00A606',
   validationGreenTint: '#EDF5EE',
   white: '#FFFFFF',
-  transparent: 'transparent'
+  transparent: 'transparent',
+  lightGray: '#808B8D'
 };
 
 export default colors;

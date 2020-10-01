@@ -18,7 +18,7 @@ export const BluetoothNotificationsModal: FC<ModalProps> = (props) => {
       buttons={[
         {
           variant: 'inverted',
-          action: goToSettingsAction,
+          action: () => goToSettingsAction(true),
           hint: t('modals:bluetoothNotifications:btnLabel'),
           label: t('modals:bluetoothNotifications:btnLabel')
         }

@@ -22,5 +22,6 @@ export enum ScreenNames {
   dataPolicy = 'dataPolicy',
   leave = 'leave',
   debug = 'debug',
-  askPermissions = 'permissions-info'
+  askPermissions = 'permissions-info',
+  pause = 'pause'
 }

@@ -21,6 +21,7 @@ import {
 } from '../../services/api/exposures';
 import {ScreenNames} from '../../navigation';
 import {SingleCodeInput} from '../molecules/single-code-input';
+import {useReminder} from '../../providers/reminder';
 
 const IconBackDark = require('../../assets/images/icon-back/image.png');
 
@@ -49,6 +50,7 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
   const [validationError, setValidationError] = useState<string>('');
   const [uploadToken, setUploadToken] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const {paused} = useReminder();
 
   useEffect(() => {
     const readUploadToken = async () => {
@@ -110,13 +112,23 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
   const handleSubmitCode = async () => {
     let exposureKeys;
     try {
+      if (paused) {
+        await exposure.start();
+      }
+
       exposureKeys = await exposure.getDiagnosisKeys();
       if (exposureKeys === []) {
         cleanUploadToken();
+        if (paused) {
+          await exposure.pause();
+        }
         return navigation.navigate(ScreenNames.testsResult, {dontShare: true});
       }
     } catch (err) {
       cleanUploadToken();
+      if (paused) {
+        await exposure.pause();
+      }
       return navigation.navigate(ScreenNames.testsResult, {dontShare: true});
     }
 
@@ -126,6 +138,9 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
       setStatus('success');
       setValidationError('');
       setLoading(false);
+      if (paused) {
+        await exposure.pause();
+      }
       navigation.navigate(ScreenNames.testsResult);
     } catch (err) {
       console.log('error uploading exposure keys:', err);

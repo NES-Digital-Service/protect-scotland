@@ -14,7 +14,6 @@ import {
   KeyServerType
 } from 'react-native-exposure-notification-service';
 import * as SecureStore from 'expo-secure-store';
-import {BUILD_VERSION} from '@env';
 import {useTranslation} from 'react-i18next';
 
 import './services/i18n';
@@ -30,6 +29,8 @@ import {
   useSettings
 } from './providers/settings';
 import {Loading} from './components/views/loading';
+import {ReminderProvider} from './providers/reminder';
+import {notificationHooks} from './services/notifications';
 
 enableScreens();
 
@@ -96,7 +97,6 @@ const ExposureApp = ({
           refreshToken
       )}
       traceConfiguration={settings.traceConfiguration}
-      appVersion={BUILD_VERSION}
       serverUrl={urls.api}
       authToken={authToken}
       refreshToken={refreshToken}
@@ -159,40 +159,28 @@ const App = (props: {exposureNotificationClicked: Boolean | null}) => {
 
     loadResourcesAndDataAsync();
 
-    PushNotification.configure({
-      onRegister: function () {},
-      onNotification: async function (notification) {
-        let requiresHandling = false;
-        if (Platform.OS === 'ios') {
-          console.log('iOS notification', notification, AppState.currentState);
-          if (
-            (notification && notification.userInteraction) ||
-            (AppState.currentState === 'active' && notification)
-          ) {
-            PushNotification.setApplicationIconBadgeNumber(0);
-            requiresHandling = true;
-            setTimeout(() => {
-              notification.finish(
-                Platform.OS === 'ios'
-                  ? PushNotificationIOS.FetchResult.NoData
-                  : ''
-              );
-            }, 3000);
-          }
+    notificationHooks.handleNotification = async function (notification) {
+      let requiresHandling = false;
+      if (Platform.OS === 'ios') {
+        if (
+          (notification && notification.userInteraction) ||
+          (AppState.currentState === 'active' && notification)
+        ) {
+          PushNotification.setApplicationIconBadgeNumber(0);
+          requiresHandling = true;
+          setTimeout(() => {
+            notification.finish(
+              Platform.OS === 'ios'
+                ? PushNotificationIOS.FetchResult.NoData
+                : ''
+            );
+          }, 3000);
         }
-        if (requiresHandling) {
-          console.log('setting notification');
-          setTimeout(() => setState((s) => ({...s, notification})), 500);
-        }
-      },
-      permissions: {
-        alert: true,
-        badge: true,
-        sound: true
-      },
-      popInitialNotification: true,
-      requestPermissions: false
-    });
+      }
+      if (requiresHandling) {
+        setTimeout(() => setState((s) => ({...s, notification})), 500);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -207,20 +195,22 @@ const App = (props: {exposureNotificationClicked: Boolean | null}) => {
                 return <Loading />;
               }
               return (
-                <ApplicationProvider
-                  user={settingsValue.user}
-                  onboarded={settingsValue.onboarded}
-                  completedExposureOnboarding={
-                    settingsValue.completedExposureOnboarding
-                  }>
-                  <ExposureApp
-                    notification={state.notification}
-                    exposureNotificationClicked={
-                      state.exposureNotificationClicked
-                    }
-                    setState={setState}
-                  />
-                </ApplicationProvider>
+                <ReminderProvider>
+                  <ApplicationProvider
+                    user={settingsValue.user}
+                    onboarded={settingsValue.onboarded}
+                    completedExposureOnboarding={
+                      settingsValue.completedExposureOnboarding
+                    }>
+                    <ExposureApp
+                      notification={state.notification}
+                      exposureNotificationClicked={
+                        state.exposureNotificationClicked
+                      }
+                      setState={setState}
+                    />
+                  </ApplicationProvider>
+                </ReminderProvider>
               );
             }}
           </SettingsContext.Consumer>

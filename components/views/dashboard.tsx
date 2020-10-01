@@ -3,12 +3,14 @@ import {
   StyleSheet,
   ScrollView,
   Text,
+  Image,
   View,
   Animated,
   RefreshControl,
   findNodeHandle,
   AccessibilityInfo,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {
@@ -44,6 +46,7 @@ import {
 } from '../organisms/modals';
 import {useSettings} from '../../providers/settings';
 import {useAppState} from '../../hooks/app-state';
+import {useReminder} from '../../providers/reminder';
 
 const ANIMATION_DURATION = 300;
 const PROMPT_OFFSET = 1000;
@@ -53,14 +56,19 @@ const getMessage = ({
   enabled,
   status,
   messages,
-  stage
+  stage,
+  paused
 }: {
   onboarded: boolean;
   enabled: Boolean;
   status: Status;
   messages: string[];
   stage: number;
+  paused?: string | null;
 }): string => {
+  if (paused) {
+    return 'dashboard:message:paused';
+  }
   if (onboarded) {
     if (enabled && status.state === StatusState.active) {
       return 'dashboard:message:standard';
@@ -85,10 +93,12 @@ export const Dashboard: FC = () => {
     enabled,
     status,
     contacts,
+    getCloseContacts,
     permissions,
     readPermissions
   } = useExposure();
   const [appState] = useAppState();
+  const {checked, paused} = useReminder();
   const navigation = useNavigation();
   const {
     onboarded,
@@ -135,7 +145,8 @@ export const Dashboard: FC = () => {
         enabled,
         status,
         messages: t('dashboard:tour', {returnObjects: true}),
-        stage: onboarded ? -1 : 0
+        stage: onboarded ? -1 : 0,
+        paused
       })
     ),
     isolationMessage: null,
@@ -176,7 +187,7 @@ export const Dashboard: FC = () => {
           return setState((s) => ({
             ...s,
             isolationComplete: false,
-            isolationMessage: t('dashboard:exposed', {isolationDuration})
+            isolationMessage: t('dashboard:exposed')
           }));
         }
       }
@@ -229,9 +240,13 @@ export const Dashboard: FC = () => {
 
   useEffect(() => {
     onRefresh();
-    processContactsForMessaging();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    getCloseContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   useEffect(() => {
     processContactsForMessaging();
@@ -296,7 +311,8 @@ export const Dashboard: FC = () => {
           enabled,
           status,
           messages: state.messages,
-          stage: state.stage
+          stage: state.stage,
+          paused
         })
       )
     }));
@@ -459,7 +475,7 @@ export const Dashboard: FC = () => {
     });
   };
 
-  if (!initialised) {
+  if (!initialised || !checked) {
     return (
       <>
         <View style={[styles.container, styles.center]}>
@@ -597,12 +613,29 @@ export const Dashboard: FC = () => {
         {onboarded && !state.isolationMessage && (
           <Animated.View ref={focusStart} style={{opacity: messageOpacity}}>
             <Markdown markdownStyles={tourStyles}>{state.current}</Markdown>
-            {state.stage === -1 && (
+            {state.stage === -1 && !paused && (
               <>
                 <Spacing s={20} />
                 <Text style={styles.supplemental}>
-                  {t('dashboard:message:bluetooth')}
+                  {t(`dashboard:message:bluetooth:${Platform.OS}`)}
                 </Text>
+              </>
+            )}
+            {state.stage === -1 && paused && (
+              <>
+                <Spacing s={20} />
+                <View style={styles.pausedRow}>
+                  <Image
+                    accessibilityIgnoresInvertColors={false}
+                    width={21}
+                    height={19}
+                    source={require('../../assets/images/warning-icon/image.png')}
+                  />
+                  {/* @ts-ignore */}
+                  <Text style={styles.paused}>
+                    {t('dashboard:message:pausedSupplemental')}
+                  </Text>
+                </View>
               </>
             )}
           </Animated.View>
@@ -627,7 +660,7 @@ export const Dashboard: FC = () => {
         )}
         <Spacing s={60} />
       </ScrollView>
-      {state.exposurePrompt && (
+      {checked && !paused && state.exposurePrompt && (
         <ExposureNotificationsModal
           isVisible={state.exposurePrompt}
           onBackdropPress={() =>
@@ -636,7 +669,7 @@ export const Dashboard: FC = () => {
           onClose={() => setState((s) => ({...s, exposurePrompt: false}))}
         />
       )}
-      {state.bluetoothPrompt && (
+      {checked && !paused && state.bluetoothPrompt && (
         <BluetoothNotificationsModal
           isVisible={state.bluetoothPrompt}
           onBackdropPress={() =>
@@ -703,6 +736,17 @@ const styles = StyleSheet.create({
     ...text.default,
     paddingLeft: 45,
     paddingRight: 45
+  },
+  pausedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 45,
+    paddingRight: 45
+  },
+  paused: {
+    ...text.defaultBold,
+    color: colors.white,
+    marginLeft: 8
   },
   nextLinkText: {
     ...text.h3Heading,
