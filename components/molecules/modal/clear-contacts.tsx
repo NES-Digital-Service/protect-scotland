@@ -50,5 +50,8 @@ const modalMarkdownStyles = StyleSheet.create({
     ...text.leader,
     color: colors.darkGrey,
     textAlign: 'center'
+  },
+  block: {
+    margin: 0
   }
 });

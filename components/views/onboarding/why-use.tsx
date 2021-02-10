@@ -1,58 +1,54 @@
 import React, {FC} from 'react';
-import {Text, StyleSheet, View} from 'react-native';
+import {Image} from 'react-native';
 import {useTranslation} from 'react-i18next';
 
 import Button from '../../atoms/button';
-import {text} from '../../../theme';
 import Spacing from '../../atoms/spacing';
 import Markdown from '../../atoms/markdown';
+import Container from '../../atoms/container';
+import {OnboardingPageProps} from './common';
+import Text from '../../atoms/text';
+import {ArrowLink} from '../../molecules/arrow-link';
 
-interface WhyUseProps {
-  handleNext(): void;
-}
+const IllustrationSource = require('../../../assets/images/why-use-illustration/image.png');
 
-const WhyUse: FC<WhyUseProps> = ({handleNext}) => {
+const WhyUse: FC<OnboardingPageProps> = ({handleNext}) => {
   const {t} = useTranslation();
 
   return (
     <>
-      <View style={styles.container}>
-        <Text style={styles.viewText}>{t('onboarding:whyUse:view:main')}</Text>
+      <Container>
+        <Container center="horizontal" stretch={false}>
+          <Image
+            source={IllustrationSource}
+            accessibilityIgnoresInvertColors={false}
+          />
+        </Container>
+        <Spacing s={48} />
+        <Text variant="h2" accessible>
+          {t('onboarding:whyUse:title')}
+        </Text>
         <Spacing s={24} />
-        <Markdown markdownStyles={markdownStyles}>
-          {t('onboarding:whyUse:view:text')}
-        </Markdown>
-        <Spacing s={24} />
-      </View>
-      <View>
-        <Button
-          onPress={handleNext}
-          hint={t('onboarding:whyUse:accessibility:nextHint')}
-          label={t('common:next:label')}>
-          {t('common:next:label')}
-        </Button>
-      </View>
-      <Spacing s={50} />
+        <Markdown>{t('onboarding:whyUse:text')}</Markdown>
+        <ArrowLink externalLink={t('links:f')}>
+          <Text variant="h4" color="primaryPurple">
+            {t('onboarding:whyUse:link1')}
+          </Text>
+        </ArrowLink>
+        <Spacing s={16} />
+        <ArrowLink externalLink={t('links:q')}>
+          <Text variant="h4" color="primaryPurple">
+            {t('onboarding:whyUse:link2')}
+          </Text>
+        </ArrowLink>
+        <Spacing s={46} />
+      </Container>
+      <Button onPress={handleNext} hint={t('common:next:hint')}>
+        {t('common:next:label')}
+      </Button>
+      <Spacing s={24} />
     </>
   );
 };
-
-const markdownStyles = StyleSheet.create({
-  text: {
-    ...text.paragraph
-  },
-  strong: {
-    ...text.defaultBold
-  }
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  viewText: {
-    ...text.leader
-  }
-});
 
 export default WhyUse;

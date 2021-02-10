@@ -10,8 +10,8 @@ import {
 
 import {colors} from '../../theme';
 
-export type ButtonTypes = 'primary' | 'secondary' | 'link' | 'back';
-export type ButtonVariants = 'inverted' | 'dark' | 'green';
+export type ButtonTypes = 'primary' | 'secondary' | 'tertiary' | 'link';
+export type ButtonVariants = 'inverted' | 'dark' | 'green' | 'small';
 
 interface ButtonColors {
   shadow: string;
@@ -32,7 +32,7 @@ interface ButtonProps {
   children: React.ReactNode;
   label?: string;
   hint?: string;
-  textColor?: string;
+  textColor?: keyof typeof colors;
   icon?: any;
   buttonStyle?: ViewStyle;
 }
@@ -48,7 +48,7 @@ const Button: React.FC<ButtonProps> = ({
   children,
   hint,
   label,
-  textColor,
+  textColor: textColorProp,
   icon,
   buttonStyle
 }) => {
@@ -69,17 +69,17 @@ const Button: React.FC<ButtonProps> = ({
           ...(variant === 'dark' && buttonColors.secondaryDark),
           ...(variant === 'green' && buttonColors.secondaryGreen)
         };
-      case 'back':
-        return buttonColors.back;
       case 'link':
         return buttonColors.link;
+      case 'tertiary':
+        return buttonColors.tertiary;
     }
   }, [type, variant]);
 
   let backgroundColor = selectedColors.shadow;
   let foregroundColor = selectedColors.background;
   let borderColor = selectedColors.border;
-  textColor = textColor || selectedColors.text;
+  let textColor = textColorProp ? colors[textColorProp] : selectedColors.text;
 
   if (pressed) {
     foregroundColor = backgroundColor;
@@ -100,7 +100,10 @@ const Button: React.FC<ButtonProps> = ({
     : {
         onPressIn: () => setPressed(true),
         onPressOut: () => setPressed(false),
-        onPress
+        onPress: () => {
+          setPressed(false);
+          onPress();
+        }
       };
 
   return (
@@ -109,7 +112,7 @@ const Button: React.FC<ButtonProps> = ({
         styles.wrapper,
         type !== 'secondary' && {backgroundColor},
         type === 'link' && styles.wrapperLink,
-        type === 'back' && styles.wrapperBack,
+        variant === 'small' && styles.variantSmall,
         rounded && styles.rounded,
         !!width && {width},
         style
@@ -124,12 +127,12 @@ const Button: React.FC<ButtonProps> = ({
                 : foregroundColor
           },
           !!borderColor && {
-            borderColor: borderColor,
-            borderWidth: 2
+            ...styles.buttonBorder,
+            borderColor
           },
           type === 'link' && styles.buttonLink,
-          type === 'back' && styles.buttonBack,
           variant === 'green' && styles.buttonGreen,
+          variant === 'small' && styles.variantSmall,
           rounded && styles.rounded,
           buttonStyle
         ]}
@@ -139,20 +142,16 @@ const Button: React.FC<ButtonProps> = ({
         accessibilityHint={hint}
         accessibilityLabel={label}
         {...pressHandlers}>
-        {type === 'back' ? (
-          <View>{children}</View>
-        ) : (
-          <View style={styles.row}>
-            {icon && (
-              <Image
-                source={icon}
-                style={styles.icon}
-                accessibilityIgnoresInvertColors={false}
-              />
-            )}
-            <Text style={[styles.text, {color: textColor}]}>{children}</Text>
-          </View>
-        )}
+        <View style={styles.row}>
+          {icon && (
+            <Image
+              source={icon}
+              style={styles.icon}
+              accessibilityIgnoresInvertColors={false}
+            />
+          )}
+          <Text style={[styles.text, {color: textColor}]}>{children}</Text>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -200,15 +199,16 @@ const buttonColors = {
     background: colors.white,
     border: colors.validationGreen
   },
-  back: {
-    shadow: colors.white,
-    background: colors.white,
-    text: colors.darkGrey
-  },
   link: {
     shadow: colors.darkGrey,
     background: 'transparent',
     text: colors.darkGrey
+  },
+  tertiary: {
+    shadow: colors.primaryPurple,
+    text: colors.primaryPurple,
+    background: colors.lighterPurple,
+    pressedText: colors.lighterPurple
   }
 };
 
@@ -238,16 +238,17 @@ const styles = StyleSheet.create({
     minHeight: 20,
     backgroundColor: 'transparent'
   },
-  buttonBack: {
-    minWidth: 30,
-    minHeight: 30,
-    borderRadius: 15
-  },
   buttonGreen: {
     borderWidth: 1
   },
+  buttonBorder: {
+    borderWidth: 2
+  },
   rounded: {
     borderRadius: 10
+  },
+  variantSmall: {
+    minHeight: 60
   },
   text: {
     textAlign: 'center',

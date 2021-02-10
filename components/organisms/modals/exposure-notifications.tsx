@@ -3,7 +3,8 @@ import {useTranslation} from 'react-i18next';
 import {Platform, StyleSheet} from 'react-native';
 import {
   useExposure,
-  StatusState
+  StatusState,
+  AuthorisedStatus
 } from 'react-native-exposure-notification-service';
 
 import Markdown from '../../atoms/markdown';
@@ -14,9 +15,10 @@ import {ScrollView} from 'react-native-gesture-handler';
 
 export const ExposureNotificationsModal: FC<ModalProps> = (props) => {
   const {t} = useTranslation();
-  const {status, askPermissions} = useExposure();
+  const {status, askPermissions, isAuthorised} = useExposure();
   const ensUnknown = status.state === StatusState.unknown;
   const ensDisabled = status.state === StatusState.disabled;
+  const notAuthorised = isAuthorised === AuthorisedStatus.unknown;
 
   return (
     <Modal
@@ -24,7 +26,7 @@ export const ExposureNotificationsModal: FC<ModalProps> = (props) => {
       type="dark"
       title={t('modals:exposureNotifications:title')}
       buttons={
-        ensUnknown
+        ensUnknown || notAuthorised
           ? [
               {
                 variant: 'inverted',
@@ -36,7 +38,7 @@ export const ExposureNotificationsModal: FC<ModalProps> = (props) => {
           : [
               {
                 variant: 'inverted',
-                action: () => goToSettingsAction(false, askPermissions, true),
+                action: () => goToSettingsAction(false, askPermissions),
                 hint: ensDisabled
                   ? t('common:turnOnBtnHint')
                   : Platform.OS === 'android'
@@ -52,7 +54,7 @@ export const ExposureNotificationsModal: FC<ModalProps> = (props) => {
       }>
       <ScrollView>
         <Markdown markdownStyles={modalMarkdownStyles}>
-          {ensUnknown
+          {ensUnknown || notAuthorised
             ? t('modals:exposureNotifications:turnOn')
             : t(`modals:exposureNotifications:instructions${Platform.OS}`)}
         </Markdown>

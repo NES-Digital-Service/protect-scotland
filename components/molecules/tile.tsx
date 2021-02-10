@@ -3,13 +3,14 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Image,
-  Text,
   StyleSheet
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useNavigation} from '@react-navigation/native';
 
-import {text, scale, colors} from '../../theme';
+import Spacing from '../atoms/spacing';
+import Text from '../atoms/text';
+import {scale} from '../../theme';
 import {useApplication} from '../../providers/context';
 
 interface Tile {
@@ -17,7 +18,7 @@ interface Tile {
   hint?: string;
   image: any;
   backgroundColor?: string;
-  invertText?: boolean;
+  dark?: boolean;
   minHeight?: number;
   dimmed?: boolean;
   link?: string;
@@ -30,7 +31,7 @@ export const Tile: FC<Tile> = ({
   label,
   hint,
   image,
-  invertText,
+  dark,
   minHeight = 135,
   link,
   additionalLabel,
@@ -43,6 +44,7 @@ export const Tile: FC<Tile> = ({
   if (link) {
     return (
       <TouchableWithoutFeedback
+        accessibilityRole="link"
         onPress={() => {
           if (onboarded) {
             navigation.navigate(link);
@@ -57,27 +59,26 @@ export const Tile: FC<Tile> = ({
             resizeMethod="resize"
             resizeMode="cover"
           />
+          <Spacing s={10} />
           <Text
-            style={[
-              styles.tileLabel,
-              additionalLabel || hint ? styles.tileLabelRegular : {},
-              invertText && styles.tileDarkText
-            ]}>
+            color={dark ? 'darkerPurple' : 'white'}
+            bold={!additionalLabel && !hint}
+            style={styles.tileLabel}>
             {t(label)}
           </Text>
           {additionalLabel && (
             <Text
-              style={[
-                // @ts-ignore
-                styles.tileLabel,
-                styles.tileLabelAdditional,
-                invertText ? styles.tileDarkText : {}
-              ]}>
+              color={dark ? 'darkerPurple' : 'white'}
+              bold={!hint}
+              style={styles.tileLabel}>
               {t(additionalLabel)}
             </Text>
           )}
           {hint && (
-            <Text style={[styles.tileLabel, styles.tileLabelAdditional]}>
+            <Text
+              color={dark ? 'darkerPurple' : 'white'}
+              bold
+              style={styles.tileLabel}>
               {t(hint)}
             </Text>
           )}
@@ -94,16 +95,18 @@ export const Tile: FC<Tile> = ({
         resizeMethod="resize"
         resizeMode="contain"
       />
+      <Spacing s={10} />
       <Text
-        style={[
-          styles.tileLabel,
-          additionalLabel || hint ? styles.tileLabelRegular : {},
-          invertText && styles.tileDarkText
-        ]}>
+        color={dark ? 'darkerPurple' : 'white'}
+        bold={!additionalLabel && !hint}
+        style={styles.tileLabel}>
         {t(label)}
       </Text>
       {hint && (
-        <Text style={[styles.tileLabel, styles.tileLabelAdditional]}>
+        <Text
+          color={dark ? 'darkerPurple' : 'white'}
+          bold
+          style={styles.tileLabel}>
           {t(hint)}
         </Text>
       )}
@@ -119,19 +122,6 @@ const styles = StyleSheet.create({
     flex: 1
   },
   tileLabel: {
-    ...text.paragraph,
-    lineHeight: scale(22),
-    fontFamily: text.fontFamily.robotoBold,
-    color: colors.white,
-    marginTop: 10
-  },
-  tileLabelRegular: {
-    fontFamily: text.fontFamily.roboto
-  },
-  tileLabelAdditional: {
-    marginTop: 0
-  },
-  tileDarkText: {
-    color: colors.darkerPurple
+    lineHeight: scale(22)
   }
 });

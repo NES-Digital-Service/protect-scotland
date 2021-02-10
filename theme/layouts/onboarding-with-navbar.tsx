@@ -1,15 +1,16 @@
 import React, {FC, MutableRefObject} from 'react';
-import {ScrollView, StyleSheet, View, ViewStyle} from 'react-native';
+import {ScrollView, ViewStyle} from 'react-native';
+
+import Container from '../../components/atoms/container';
 import NavBar from '../../components/molecules/onboarding-navbar';
 import {Scrollable} from './scrollable';
-import {colors} from '../../theme';
-
-const ONBOARDING_STEPS = 5;
 
 interface OnboardingWithNavbarProps {
   goBack(): void;
   canGoBack: boolean;
+  sections: number;
   activeSection: number;
+  backgroundColor?: string;
   scrollableStyle?: ViewStyle;
   contentContainerStyle?: ViewStyle;
   scrollViewRef?: MutableRefObject<ScrollView | null>;
@@ -19,32 +20,28 @@ const OnboardingWithNavbar: FC<OnboardingWithNavbarProps> = ({
   canGoBack,
   goBack,
   children,
+  sections,
   activeSection,
+  backgroundColor,
   contentContainerStyle,
   scrollableStyle,
   scrollViewRef
 }) => (
-  <View style={[styles.container]}>
+  <Container style={[!!backgroundColor && {backgroundColor: backgroundColor}]}>
     <NavBar
       canGoBack={canGoBack}
       goBack={goBack}
-      sections={ONBOARDING_STEPS}
+      sections={sections}
       activeSection={activeSection}
     />
     <Scrollable
       scrollableStyle={scrollableStyle}
       scrollViewRef={scrollViewRef}
-      backgroundColor={colors.white}
+      importantForAccessibility="no"
       contentContainerStyle={contentContainerStyle}>
       {children}
     </Scrollable>
-  </View>
+  </Container>
 );
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  }
-});
 
 export default OnboardingWithNavbar;

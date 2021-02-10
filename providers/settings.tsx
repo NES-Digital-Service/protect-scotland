@@ -11,11 +11,14 @@ import i18n, {TFunction} from 'i18next';
 import {useTranslation} from 'react-i18next';
 import {isObject} from 'formik';
 import {TraceConfiguration} from 'react-native-exposure-notification-service';
+import get from 'lodash/get';
 
 import * as api from '../services/api';
+import {requestWithCache} from '../services/api/utils';
 
 interface SettingsContextState {
   loaded: boolean;
+  latestVersion: string | null;
   traceConfiguration: TraceConfiguration;
   onboarded: boolean;
   completedExposureOnboarding: boolean;
@@ -28,21 +31,27 @@ interface SettingsContextState {
   testingInstructions: string;
   contactTracingNumber: string;
   helplineNumber: string;
-  helplineString: string;
-  closeContactAssistance: string;
   testIsolationDuration: number;
   isolationDuration: number;
   isolationEnd: number;
   isolationCompleteDuration: number;
   isolationParagraph: string;
+  copy: {
+    testResult: {
+      text1: string;
+      text2: string;
+    };
+  };
+  showCertUnderage: boolean;
+  noticesWebPageURL: String | undefined;
 }
 
 interface SettingsContextValue extends SettingsContextState {
   reload: () => void;
 }
 
-const defaultIsolationDuration = 14;
-const defaultIsolationEnd = 15;
+const defaultIsolationDuration = 10;
+const defaultIsolationEnd = 11;
 const defaultTestIsolationDuration = 10;
 const isolationCompleteDuration = 1;
 const defaultIsolationParagraph = i18n.t('tests:result:label1', {
@@ -51,21 +60,17 @@ const defaultIsolationParagraph = i18n.t('tests:result:label1', {
 const defaultAgeLimit = 16;
 const defaultContactTracingNumber = i18n.t('config:contactTracingNumber');
 const defaultHelplineNumber = i18n.t('config:helplineNumber');
-const defaultHelplineString = i18n.t('config:helplineString');
-const defaultCloseContactAssistance = i18n.t('config:closeContactAssistance', {
-  link: i18n.t('links:m')
-});
+const defaultShowCertUnderage = false;
 
 const defaultValue: SettingsContextState = {
   loaded: false,
   user: null,
   onboarded: false,
   completedExposureOnboarding: false,
+  latestVersion: null,
   traceConfiguration: {
-    exposureCheckInterval: 120,
-    storeExposuresFor: 14,
-    fileLimit: 1,
-    fileLimitiOS: 3
+    exposureCheckInterval: 180,
+    storeExposuresFor: 14
   },
   exposedTodo: '',
   dpinText: '',
@@ -79,9 +84,15 @@ const defaultValue: SettingsContextState = {
   solutionText: '',
   testingInstructions: '',
   helplineNumber: defaultHelplineNumber,
-  helplineString: defaultHelplineString,
-  closeContactAssistance: '',
-  contactTracingNumber: defaultContactTracingNumber
+  contactTracingNumber: defaultContactTracingNumber,
+  copy: {
+    testResult: {
+      text1: '',
+      text2: ''
+    }
+  },
+  showCertUnderage: defaultShowCertUnderage,
+  noticesWebPageURL: undefined
 };
 
 export const SettingsContext = createContext(
@@ -106,14 +117,8 @@ const loadSettingsAsync = async (
     'scot.completedExposureOnboarding'
   ]);
 
-  let apiSettings;
-  try {
-    apiSettings = await api.loadSettings();
-    console.log(apiSettings);
-  } catch (e) {
-    console.log('Error loading settings: ', e);
-    apiSettings = {};
-  }
+  const {data: res} = await requestWithCache('scot.settings', api.loadSettings);
+  const apiSettings = res ?? {};
 
   const tc: TraceConfiguration = {
     ...defaultValue.traceConfiguration
@@ -124,16 +129,11 @@ const loadSettingsAsync = async (
   if (apiSettings.storeExposuresFor) {
     tc.storeExposuresFor = Number(apiSettings.storeExposuresFor);
   }
-  if (apiSettings.fileLimit) {
-    tc.fileLimit = Number(apiSettings.fileLimit);
-  }
-  if (apiSettings.fileLimitiOS) {
-    tc.fileLimitiOS = Number(apiSettings.fileLimitiOS);
-  }
 
   const getDbText = (settings: any, key: string): string => {
     let data =
-      (settings[key] && (settings[key][i18n.language] || settings[key].en)) ||
+      get(settings, `${key}.${i18n.language}`) ||
+      get(settings, `${key}.en`) ||
       '';
 
     if (isObject(data)) {
@@ -164,16 +164,26 @@ const loadSettingsAsync = async (
     getDbText(apiSettings, 'testingInstructions') ||
     t('config:testingInstructions');
 
-  const helplineString =
-    getDbText(apiSettings, 'helplineString') || t('config:helplineString');
+  const copy = {
+    testResult: {
+      text1:
+        getDbText(apiSettings, 'copy.testResult.text1') ||
+        t('tests:result:advice') + t('tests:result:text1'),
+      text2:
+        getDbText(apiSettings, 'copy.testResult.text2') ||
+        t('tests:result:advice') + t('tests:result:text2')
+    }
+  };
 
   setState({
     loaded: true,
     user: user[1],
     onboarded: Boolean(onboarded[1]),
     completedExposureOnboarding: Boolean(completedExposureOnboarding[1]),
+    latestVersion: apiSettings.latestVersion,
     traceConfiguration: tc,
     exposedTodo,
+    copy,
     dpinText,
     tandcText,
     solutionText,
@@ -181,7 +191,6 @@ const loadSettingsAsync = async (
     contactTracingNumber:
       apiSettings.contactTracingNumber || defaultContactTracingNumber,
     helplineNumber: apiSettings.helplineNumber || defaultHelplineNumber,
-    helplineString,
     ageLimit: apiSettings.ageLimit
       ? Number(apiSettings.ageLimit)
       : defaultValue.ageLimit,
@@ -203,11 +212,10 @@ const loadSettingsAsync = async (
             apiSettings.testIsolationDuration || defaultTestIsolationDuration
         })
       : defaultIsolationParagraph,
-    closeContactAssistance: apiSettings.closeContactAssistance
-      ? t(getDbText(apiSettings, 'closeContactAssistance'), {
-          link: t('links:m')
-        })
-      : defaultCloseContactAssistance
+    showCertUnderage: apiSettings.showCertUnderage
+      ? apiSettings.showCertUnderage === 'true'
+      : defaultShowCertUnderage,
+    noticesWebPageURL: apiSettings.noticesWebPageURL
   });
 };
 

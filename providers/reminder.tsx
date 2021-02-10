@@ -3,6 +3,9 @@ import AsyncStorage from '@react-native-community/async-storage';
 import {useTranslation} from 'react-i18next';
 import PushNotification from 'react-native-push-notification';
 import {addDays} from 'date-fns';
+import {
+  StatusState, useExposure
+} from 'react-native-exposure-notification-service';
 
 interface State {
   paused: string | null;
@@ -34,15 +37,20 @@ const REMINDER_ID = 12345;
 export const Provider = ({children}: API) => {
   const [state, setState] = useState<State>(initialState);
   const {t} = useTranslation();
+  const exposure = useExposure();
 
   useEffect(() => {
-    AsyncStorage.getItem(REMINDER_KEY).then((paused) =>
-      setState({
-        paused,
-        checked: true
-      })
-    );
-  }, []);
+    const checkRunning = async () => {
+      AsyncStorage.getItem(REMINDER_KEY).then((paused) => {
+        setState({
+          paused: paused && exposure.status.state !== StatusState.active ? paused : null,
+          checked: true
+        })
+      });
+    };
+
+    checkRunning(); 
+  }, [exposure.status.state]);
 
   const cancelReminder = () =>
     PushNotification.cancelLocalNotifications({id: String(REMINDER_ID)});
@@ -63,6 +71,7 @@ export const Provider = ({children}: API) => {
     AsyncStorage.setItem(REMINDER_KEY, timestamp);
 
     PushNotification.localNotificationSchedule({
+      channelId: 'default',
       id: REMINDER_ID,
       title: t('reminder:title'),
       message: t('reminder:message'),

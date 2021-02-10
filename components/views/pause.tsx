@@ -1,14 +1,15 @@
 import React, {FC, useState} from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {useTranslation} from 'react-i18next';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import {format, isBefore} from 'date-fns';
 import {useExposure} from 'react-native-exposure-notification-service';
 
+import Text from '../atoms/text';
 import {ModalClose} from '../atoms/modal-close';
 import Markdown from '../atoms/markdown';
-import {text, colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import Spacing from '../atoms/spacing';
 import Button from '../atoms/button';
 import {useReminder} from '../../providers/reminder';
@@ -34,14 +35,16 @@ export const Pause: FC = () => {
       <View style={styles.header}>
         <ModalClose onPress={() => navigation.goBack()} />
       </View>
-      <ScrollView
-        style={styles.view}
-        contentContainerStyle={styles.contentContainerStyle}>
-        <Text style={styles.title}>{t('pause:title')}</Text>
+      <ScrollView contentContainerStyle={styles.contentContainerStyle}>
+        <Text variant="h3" color="darkGrey">
+          {t('pause:title')}
+        </Text>
         <Spacing s={24} />
-        <Text style={styles.body}>{t('pause:body')}</Text>
+        <Text color="darkGrey">{t('pause:body')}</Text>
         <Spacing s={24} />
-        <Markdown>{t('pause:label', {link: t('links:o')})}</Markdown>
+        <Markdown accessibleLink={t('links:o')}>
+          {t('pause:label', {link: t('links:o')})}
+        </Markdown>
         <Spacing s={24} />
         <Button
           type="secondary"
@@ -92,27 +95,15 @@ export const Pause: FC = () => {
 };
 
 const styles = StyleSheet.create({
-  view: {
-    flex: 1
-  },
   header: {
     padding: 40,
     flexDirection: 'row',
     justifyContent: 'flex-end'
   },
   contentContainerStyle: {
-    flex: 1,
-    paddingLeft: 45,
-    paddingRight: 45,
+    flexGrow: 1,
+    paddingHorizontal: SPACING_HORIZONTAL,
     paddingBottom: 40
-  },
-  title: {
-    ...text.h3Heading,
-    color: colors.darkGrey
-  },
-  body: {
-    ...text.paragraph,
-    color: colors.darkGrey
   },
   buttonContainer: {
     justifyContent: 'flex-end'

@@ -9,15 +9,23 @@ import {AccessibilityInfo} from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import {loadData, StatsData} from '../services/api';
+import {requestWithCache} from '../services/api/utils';
 
 export interface Accessibility {
   reduceMotionEnabled: boolean;
   screenReaderEnabled: boolean;
 }
 
+export enum UserAgeGroup {
+  ageGroup1 = 'ageGroup1',
+  ageGroup2 = 'ageGroup2',
+  ageGroup3 = 'ageGroup3'
+}
+
 export interface User {
   valid: boolean;
   tracking?: any[];
+  ageGroup: UserAgeGroup;
 }
 
 interface State {
@@ -124,9 +132,16 @@ export const AP = ({
   }, []);
 
   const setContext = async (data: Partial<State>) => {
-    setState((s) => ({...s, ...data}));
+    setState((s) => ({
+      ...s,
+      ...data,
+      ...(data.user ? {user: Object.assign({}, s.user, data.user)} : {})
+    }));
     if (data.user) {
-      await AsyncStorage.setItem('scot.user', JSON.stringify(data.user));
+      await AsyncStorage.setItem(
+        'scot.user',
+        JSON.stringify(Object.assign({}, state.user, data.user))
+      );
     }
     if (data.completedExposureOnboarding) {
       await AsyncStorage.setItem('scot.completedExposureOnboarding', 'y');
@@ -142,6 +157,8 @@ export const AP = ({
     await AsyncStorage.removeItem('scot.showDebug');
     await AsyncStorage.removeItem('scot.onboarded');
     await AsyncStorage.removeItem('scot.completedExposureOnboarding');
+    await AsyncStorage.removeItem('scot.statsData');
+    await AsyncStorage.removeItem('scot.settings');
     await AsyncStorage.removeItem('analyticsConsent');
 
     setState((s) => ({
@@ -152,21 +169,10 @@ export const AP = ({
     }));
   };
 
-  const loadAppData = async () => {
-    try {
-      const data = await loadData();
-      setState((s) => ({...s, loading: false, data}));
-      return true;
-    } catch (err) {
-      setState((s) => ({...s, loading: false, data: null}));
-      console.log('Error loading app data: ', err);
-      console.log(err);
-      return err;
-    }
-  };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const loadAppDataRef = useCallback(loadAppData, [loadData]);
+  const loadAppDataRef = useCallback(async () => {
+    const {data} = await requestWithCache('scot.statsData', loadData);
+    return setState((s) => ({...s, loading: false, data}));
+  }, []);
 
   const value: ApplicationContextValue = {
     ...state,

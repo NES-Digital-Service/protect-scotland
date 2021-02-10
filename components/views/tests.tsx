@@ -1,19 +1,20 @@
 import React, {FC} from 'react';
-import {StyleSheet, ScrollView, Text, Image, Platform} from 'react-native';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {StyleSheet, ScrollView, Image, Platform} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {StackNavigationProp} from '@react-navigation/stack';
 
+import Text from '../atoms/text';
 import Button from '../atoms/button';
 import Spacing from '../atoms/spacing';
 import {ModalHeader} from '../molecules/modal-header';
-import {SPACING_BOTTOM} from '../../theme/layouts/shared';
-import {text, colors} from '../../theme';
+import {SPACING_BOTTOM, SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {ScreenNames} from '../../navigation';
-import ActionCard from '../molecules/action-card';
+import {ArrowLink} from '../molecules/arrow-link';
+import {openBrowserAsync} from '../../utils/web-browser';
 
 const JarIcon = require('../../assets/images/icon-jar/image.png');
-const Logo = require('../../assets/images/test-view-logo/image.png');
+const Illustration = require('../../assets/images/test-illustration/image.png');
 const IconPlus = require('../../assets/images/icon-plus/image.png');
 
 interface TestsProps {
@@ -22,32 +23,27 @@ interface TestsProps {
 
 export const Tests: FC<TestsProps> = ({navigation}) => {
   const {t} = useTranslation();
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
 
   const handleAddTestResult = () => navigation.navigate(ScreenNames.testsAdd);
 
   return (
     <ScrollView
-      style={styles.container}
       contentContainerStyle={[
         styles.contentContainer,
         {paddingBottom: insets.bottom + SPACING_BOTTOM}
       ]}>
-      <ModalHeader
-        heading="tests:heading"
-        color={colors.darkGrey}
-        icon={JarIcon}
-      />
+      <ModalHeader heading="tests:heading" color="darkGrey" icon={JarIcon} />
       <Spacing s={40} />
       <Image
-        source={Logo}
+        source={Illustration}
         style={styles.logo}
-        accessible
         accessibilityIgnoresInvertColors={false}
-        accessibilityHint={t('tests:illustrationLabel')}
       />
       <Spacing s={40} />
-      <Text style={styles.viewText}>{t('tests:content')}</Text>
+      <Text align="center" variant="leader" color="darkGrey">
+        {t('tests:content')}
+      </Text>
       <Spacing s={25} />
       <Button
         onPress={handleAddTestResult}
@@ -56,8 +52,22 @@ export const Tests: FC<TestsProps> = ({navigation}) => {
         variant="dark">
         {t('tests:addTestResult')}
       </Button>
+      <Spacing s={25} />
+      <Button
+        onPress={() => openBrowserAsync(t('links:t'))}
+        label={t('tests:bookATest')}
+        variant="inverted">
+        {t('tests:bookATest')}
+      </Button>
       <Spacing s={54} />
-      <ActionCard content={t('tests:view:tellMore')} link={t('links:j')} />
+      <ArrowLink
+        externalLink={t('links:j')}
+        accessibilityHint={t('tests:view:a11y:hint')}
+        accessibilityLabel={t('tests:view:a11y:label')}>
+        <Text variant="h4" color="primaryPurple">
+          {t('tests:view:tellMore')}
+        </Text>
+      </ArrowLink>
       <Spacing s={54} />
     </ScrollView>
   );
@@ -65,20 +75,9 @@ export const Tests: FC<TestsProps> = ({navigation}) => {
 
 const styles = StyleSheet.create({
   logo: {alignSelf: 'center'},
-  container: {
-    flex: 1
-  },
   contentContainer: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  viewText: {
-    ...text.leader,
-    textAlign: 'center'
-  },
-  moreInfo: {
-    alignSelf: 'flex-start'
+    paddingHorizontal: SPACING_HORIZONTAL
   }
 });

@@ -3,27 +3,31 @@ import {
   StyleSheet,
   View,
   ScrollView,
-  Text,
   Image,
   Dimensions,
   Animated,
   Alert,
-  findNodeHandle,
-  AccessibilityInfo,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {StackNavigationProp} from '@react-navigation/stack';
 
+import Container from '../atoms/container';
+import Text from '../atoms/text';
 import Spacing from '../atoms/spacing';
 import Button from '../atoms/button';
+import {Back} from '../atoms/back';
 import {ScreenNames} from '../../navigation';
-import {text, colors} from '../../theme';
+import {colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {useApplication} from '../../providers/context';
 import {useConfirmationSpace} from '../../hooks/confirmation-space';
+import {A11yView, useA11yElement} from '../../hooks/a11y-element';
 
+const OnboardingLogo = require('../../assets/images/onboarding-logo/image.png');
 const OnboardingGroup = require('../../assets/images/onboarding-group/image.png');
-const WaveInvertedBackground = require('../../assets/images/wave-inverted/image.png');
+const WaveBackground = require('../../assets/images/wave/image.png');
 
 interface LocationConfirmationProps {
   navigation: StackNavigationProp<any>;
@@ -32,22 +36,25 @@ interface LocationConfirmationProps {
 const {width, height} = Dimensions.get('window');
 
 // The minimum amount of space required to show the content
-const MIN_CONTENT_HEIGHT = 480;
+const MIN_CONTENT_HEIGHT = 300;
 const MAX_CONTENT_HEIGHT = 550;
 
 export const LocationConfirmation: FC<LocationConfirmationProps> = ({
   navigation
 }) => {
   const {t} = useTranslation();
-  const position = useRef(new Animated.Value(height + 100)).current;
+  const position = useRef(new Animated.Value(height)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const ref = useRef<any>();
   const [pressed, setPressed] = useState(false);
   const {accessibility} = useApplication();
+  const {a11yProps, focusA11yElement} = useA11yElement();
 
-  const {topTrim, contentHeight, ILLUSTRATION_HEIGHT} = useConfirmationSpace(
-    MIN_CONTENT_HEIGHT
-  );
+  const {
+    topTrim,
+    contentHeight,
+    ILLUSTRATION_HEIGHT,
+    LOGO_HEIGHT
+  } = useConfirmationSpace(MIN_CONTENT_HEIGHT);
 
   useEffect(() => {
     Animated.stagger(accessibility.reduceMotionEnabled ? 0 : 200, [
@@ -57,50 +64,62 @@ export const LocationConfirmation: FC<LocationConfirmationProps> = ({
         useNativeDriver: true
       }),
       Animated.timing(position, {
-        toValue: 2,
+        toValue: 0,
         duration: accessibility.reduceMotionEnabled ? 0 : 700,
         useNativeDriver: true
       })
     ]).start();
   });
 
-  useEffect(() => {
-    if (ref.current) {
-      const tag = findNodeHandle(ref.current);
-      if (tag) {
-        setTimeout(() => AccessibilityInfo.setAccessibilityFocus(tag), 200);
-      }
-    }
-  });
+  useEffect(() => focusA11yElement(200), [focusA11yElement]);
+
+  let alertText = t('locationConfirmation:noAlert:body');
+  let alertTitle = t('locationConfirmation:noAlert:title');
+
+  // Android alert titles default to max two lines, cropping long text.
+  // RN doesn't allow this to be changed - https://github.com/facebook/react-native/issues/10527
+  if (Platform.OS === 'android') {
+    alertText = `${alertTitle}
+
+${alertText}`;
+    alertTitle = '';
+  }
 
   const handleNo = () => {
     setPressed(true);
-    Alert.alert(
-      t('locationConfirmation:noAlert:title'),
-      t('locationConfirmation:noAlert:body'),
-      [
-        {
-          text: t('locationConfirmation:noAlert:action'),
-          style: 'default',
-          onPress: () => {
-            setPressed(false);
-          }
+    Alert.alert(alertTitle, alertText, [
+      {
+        text: t('locationConfirmation:noAlert:action'),
+        style: 'default',
+        onPress: () => {
+          setPressed(false);
         }
-      ]
-    );
+      }
+    ]);
   };
 
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <View
-        ref={ref}
-        style={styles.background}
-        accessible={true}
-        accessibilityHint={t('viewNames:location')}
-      />
-      <View testID="welcome" style={[styles.container]}>
-        <View style={styles.group}>
+      <View style={styles.background} />
+      <A11yView {...a11yProps} accessibilityHint={t('viewNames:location')} />
+      <View style={styles.back}>
+        <Back onPress={() => navigation.popToTop()} />
+      </View>
+      <Container testID="welcome">
+        <Container>
+          <Animated.Image
+            style={{
+              opacity,
+              top: topTrim
+            }}
+            width={width}
+            height={LOGO_HEIGHT}
+            source={OnboardingLogo}
+            accessible
+            accessibilityHint={t('logo:main')}
+            accessibilityIgnoresInvertColors={false}
+          />
           <Animated.Image
             style={{
               opacity,
@@ -111,7 +130,7 @@ export const LocationConfirmation: FC<LocationConfirmationProps> = ({
             source={OnboardingGroup}
             accessibilityIgnoresInvertColors={false}
           />
-        </View>
+        </Container>
         <Animated.View
           style={[
             styles.bottom,
@@ -126,21 +145,21 @@ export const LocationConfirmation: FC<LocationConfirmationProps> = ({
               style={[styles.wave, {width, height: contentHeight}]}
               width={width}
               height={contentHeight}
-              source={WaveInvertedBackground}
+              source={WaveBackground}
               accessibilityIgnoresInvertColors={false}
               resizeMode="stretch"
             />
             <ScrollView>
               <Spacing s={30} />
-              <Text style={styles.notice}>
+              <Text variant="leader" align="center">
                 {t('locationConfirmation:notice')}
               </Text>
               <Spacing s={30} />
-              <Text style={styles.viewText}>
+              <Text align="center">
                 {t('locationConfirmation:description')}
               </Text>
               <Spacing s={30} />
-              <Text style={styles.notice}>
+              <Text variant="leader" align="center">
                 {t('locationConfirmation:question')}
               </Text>
               <Spacing s={38} />
@@ -149,10 +168,10 @@ export const LocationConfirmation: FC<LocationConfirmationProps> = ({
                 type="primary"
                 onPress={() => {
                   setPressed(true);
-                  navigation.replace(ScreenNames.onboarding);
+                  navigation.navigate(ScreenNames.onboarding);
+                  setPressed(false);
                 }}
-                hint={t('locationConfirmation:yesBtn')}
-                label={t('common:yes:label')}>
+                hint={t('locationConfirmation:yesBtn')}>
                 {t('common:yes:label')}
               </Button>
               <Spacing s={24} />
@@ -160,58 +179,42 @@ export const LocationConfirmation: FC<LocationConfirmationProps> = ({
                 disabled={pressed}
                 type="link"
                 onPress={handleNo}
-                hint={t('locationConfirmation:noBtn')}
-                label={t('common:no:label')}>
+                hint={t('locationConfirmation:noBtn')}>
                 {t('common:no:label')}
               </Button>
               <Spacing s={24} />
             </ScrollView>
           </View>
         </Animated.View>
-      </View>
+      </Container>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: 'relative',
-    zIndex: 10
-  },
-  contentContainer: {
-    flexGrow: 1
-  },
-  notice: {
-    ...text.leader,
-    textAlign: 'center'
-  },
-  viewText: {
-    ...text.paragraph,
-    textAlign: 'center'
-  },
   bottom: {
     backgroundColor: colors.white
   },
   bottomContainer: {
-    paddingHorizontal: 45,
+    paddingHorizontal: SPACING_HORIZONTAL,
     paddingBottom: 30
   },
   background: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
     backgroundColor: colors.primaryPurple,
     flex: 1,
     justifyContent: 'flex-end'
+  },
+  back: {
+    position: 'absolute',
+    top: 40,
+    left: 40,
+    zIndex: 1
   },
   wave: {
     position: 'absolute',
     top: -40,
     left: 0,
-    right: 0,
-    height: 400
-  },
-  group: {
-    flex: 1
+    right: 0
   }
 });

@@ -1,18 +1,21 @@
 import React, {FC} from 'react';
-import {View, StyleSheet, ScrollView, Text, Platform} from 'react-native';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {StyleSheet, ScrollView, Platform} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RouteProp} from '@react-navigation/native';
 
+import Container from '../atoms/container';
+import Text from '../atoms/text';
 import Button from '../atoms/button';
 import Spacing from '../atoms/spacing';
 import {ModalHeader} from '../molecules/modal-header';
-import {SPACING_BOTTOM} from '../../theme/layouts/shared';
+import {SPACING_BOTTOM, SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {text, colors} from '../../theme';
 import Markdown from '../atoms/markdown';
 import {ScreenNames} from '../../navigation';
-import ActionCard from '../molecules/action-card';
+import {ArrowLink} from '../molecules/arrow-link';
+import {useSettings} from '../../providers/settings';
 
 type ParamList = {
   'tests.result': {
@@ -28,7 +31,8 @@ interface TestsResultProps {
 
 export const TestsResult: FC<TestsResultProps> = ({navigation, route}) => {
   const {t} = useTranslation();
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
+  const {copy} = useSettings();
 
   const dontShare = route.params && route.params.dontShare;
 
@@ -39,40 +43,34 @@ export const TestsResult: FC<TestsResultProps> = ({navigation, route}) => {
   return (
     <>
       <ScrollView
-        style={[
-          styles.container,
-          {paddingBottom: insets.bottom + SPACING_BOTTOM}
-        ]}
+        style={[{paddingBottom: insets.bottom + SPACING_BOTTOM}]}
         contentContainerStyle={[
           styles.contentContainer,
           {paddingBottom: insets.bottom + SPACING_BOTTOM}
         ]}>
         <ModalHeader
           heading={dontShare ? undefined : 'tests:result:heading'}
-          color={colors.darkGrey}
+          color="darkGrey"
           left
         />
-        <Spacing s={40} />
-        <View style={styles.top}>
-          <Text style={styles.text}>{t('tests:result:advice')}</Text>
-          <Spacing s={28} />
-          {dontShare ? (
-            <Markdown>{t('tests:result:label2dontShare')}</Markdown>
-          ) : (
-            <Markdown markdownStyles={markdownStyle}>
-              {t('tests:result:label2')}
-            </Markdown>
-          )}
-          <Spacing s={dontShare ? 28 : 105} />
+        {!dontShare && <Spacing s={40} />}
+        <Container>
+          <Markdown markdownStyles={markdownStyle}>
+            {dontShare ? copy.testResult.text2 : copy.testResult.text1}
+          </Markdown>
+          {!dontShare && <Spacing s={40} />}
           {!dontShare && (
-            <ActionCard
-              inverted
-              content={t('tests:view:tellMore')}
-              link={t('links:j')}
-            />
+            <ArrowLink
+              externalLink={t('links:j')}
+              accessibilityHint={t('tests:view:a11y:hint')}
+              accessibilityLabel={t('tests:view:a11y:label')}>
+              <Text variant="h4" color="primaryPurple">
+                {t('tests:view:tellMore')}
+              </Text>
+            </ArrowLink>
           )}
           <Spacing s={dontShare ? 28 : 47} />
-        </View>
+        </Container>
         {dontShare && (
           <>
             <Button
@@ -89,17 +87,20 @@ export const TestsResult: FC<TestsResultProps> = ({navigation, route}) => {
           label={t('tests:result:doneLabel')}
           hint={t('tests:result:doneHint')}
           type={dontShare ? 'link' : undefined}
-          textColor={dontShare ? colors.darkerPurple : undefined}>
+          textColor={dontShare ? 'darkerPurple' : undefined}>
           {t('common:done')}
         </Button>
         {dontShare && (
           <>
             <Spacing s={64} />
-            <ActionCard
-              inverted
-              content={t('tests:view:tellMore')}
-              link={t('links:j')}
-            />
+            <ArrowLink
+              externalLink={t('links:j')}
+              accessibilityHint={t('tests:view:a11y:hint')}
+              accessibilityLabel={t('tests:view:a11y:label')}>
+              <Text variant="h4" color="primaryPurple">
+                {t('tests:view:tellMore')}
+              </Text>
+            </ArrowLink>
           </>
         )}
         <Spacing s={50} />
@@ -114,24 +115,15 @@ const markdownStyle = StyleSheet.create({
     color: colors.darkGrey
   },
   strong: {
-    fontFamily: text.fontFamily.latoBold
+    ...text.paragraph
   }
 });
 
 const styles = StyleSheet.create({
-  top: {flex: 1},
-  container: {
-    flex: 1
-  },
   contentContainer: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  text: {
-    ...text.leader,
-    color: colors.darkGrey
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   wave: {
     position: 'absolute',

@@ -45,6 +45,27 @@ def flipper_post_install(installer)
   end
 end
 
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings.delete 'IPHONEOS_DEPLOYMENT_TARGET'
+    end
+  end
+  #Workaround for Xcode 12 and Auto-Linking
+  installer.pods_project.targets.each do |target|
+    if ['RNCAsyncStorage', 'RNGestureHandler', 'RNPermissions', 'RNReanimated', 'RNScreens', 'RNShare', 'react-native-safe-area-context', 'react-native-webview', 'RNCMaskedView', 'RNIOS11DeviceCheck', 'RNSVG', 'react-native-exposure-notification-service', 'RNCPushNotificationIOS'].include?(target.name) #list all affected target in the array
+      target.build_phases.each do |build_phases|
+        if build_phases.display_name == 'Frameworks'
+          file_ref = installer.pods_project.new(Xcodeproj::Project::Object::PBXFileReference)
+          file_ref.path = 'React.framework'
+          file_ref.source_tree = 'BUILT_PRODUCTS_DIR'
+          build_phases.add_file_reference(file_ref)
+        end
+      end
+    end
+  end
+end
+
 # Convert all permission pods into static libraries
 pre_install do |installer|
   installer.pod_targets.each do |pod|
@@ -98,7 +119,7 @@ target 'ProtectScotland' do
   pod 'SSZipArchive'
   pod 'Alamofire', '~> 5.2'
   pod 'KeychainSwift', '~> 19.0'
-  
+
   use_native_modules!
 
   use_unimodules!

@@ -4,7 +4,8 @@ import {
   ScrollView,
   Alert,
   Platform,
-  Dimensions
+  Dimensions,
+  StatusBar
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +21,8 @@ import {forget} from '../../services/api';
 import {ScreenNames} from '../../navigation';
 import {useSettings} from '../../providers/settings';
 import Spacing from '../atoms/spacing';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
+import { useReminder } from '../../providers/reminder';
 
 export const Leave: FC = () => {
   const {t} = useTranslation();
@@ -27,6 +30,7 @@ export const Leave: FC = () => {
   const app = useApplication();
   const navigation = useNavigation();
   const {reload} = useSettings();
+  const reminder = useReminder();
 
   const confirmed = async () => {
     try {
@@ -38,6 +42,7 @@ export const Leave: FC = () => {
       }
       await forget();
       await app.clearContext();
+      reminder.deleteReminder();
       reload();
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -73,28 +78,30 @@ export const Leave: FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Back />
-      <Title title="leave:title" />
-      <Markdown>{t('leave:body')}</Markdown>
-      <Button
-        style={styles.button}
-        hint={t('leave:control:hint')}
-        label={t('leave:control:label')}
-        onPress={confirm}>
-        {t('leave:control:label')}
-      </Button>
-      <Spacing s={44} />
-    </ScrollView>
+    <>
+      <StatusBar barStyle="default" />
+      <ScrollView style={styles.container}>
+        <Back variant="light" />
+        <Spacing s={44} />
+        <Title accessible title="leave:title" />
+        <Markdown>{t('leave:body')}</Markdown>
+        <Button
+          style={styles.button}
+          hint={t('leave:control:hint')}
+          label={t('leave:control:label')}
+          onPress={confirm}>
+          {t('leave:control:label')}
+        </Button>
+        <Spacing s={44} />
+      </ScrollView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   button: {
     marginTop: Dimensions.get('window').scale > 2 ? 24 : 12

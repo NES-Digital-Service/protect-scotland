@@ -70,7 +70,6 @@
       </intent-filter>
     </activity>
 
-    <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
     <meta-data  android:name="com.dieam.reactnativepushnotification.notification_foreground"
                 android:value="true"/>
     <meta-data  android:name="com.dieam.reactnativepushnotification.channel_create_default"

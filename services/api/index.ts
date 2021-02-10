@@ -1,14 +1,10 @@
 import {Platform} from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import {fetch} from 'react-native-ssl-pinning';
-import NetInfo from '@react-native-community/netinfo';
 import RNGoogleSafetyNet from 'react-native-google-safetynet';
 import RNIOS11DeviceCheck from 'react-native-ios11-devicecheck';
 import {SAFETYNET_KEY, ENV, TEST_TOKEN} from '@env';
-import {getVersion} from 'react-native-exposure-notification-service';
 
-import {isMountedRef, navigationRef, ScreenNames} from '../../navigation';
 import {urls} from '../../constants/urls';
+import {request, requestRetry, saveMetric, METRIC_TYPES} from './utils';
 
 export const verify = async (nonce: string) => {
   if (Platform.OS === 'android') {
@@ -26,120 +22,21 @@ export const verify = async (nonce: string) => {
         deviceVerificationPayload: TEST_TOKEN
       };
     }
+    const deviceVerificationPayload = await RNIOS11DeviceCheck.getToken();
+
     return {
       platform: 'ios',
-      deviceVerificationPayload: await RNIOS11DeviceCheck.getToken(),
-      timestamp: Date.now()
+      deviceVerificationPayload
     };
   }
 };
 
-const connected = async (retry = false): Promise<boolean> => {
-  const networkState = await NetInfo.fetch();
-  if (networkState.isInternetReachable && networkState.isConnected) {
-    return true;
-  }
-
-  if (retry) {
-    throw new Error('Network Unavailable');
-  } else {
-    await new Promise((r) => setTimeout(r, 1000));
-    await connected(true);
-    return true;
-  }
-};
-
-export const request = async (url: string, cfg: any) => {
-  await connected();
-  const {authorizationHeaders = false, ...config} = cfg;
-
-  if (authorizationHeaders) {
-    let bearerToken = await SecureStore.getItemAsync('token');
-    if (!bearerToken) {
-      bearerToken = await createToken();
-    }
-
-    if (!config.headers) {
-      config.headers = {};
-    }
-    config.headers.Authorization = `Bearer ${bearerToken}`;
-  }
-
-  let isUnauthorised;
-  let resp;
-  try {
-    resp = await fetch(url, {
-      ...config,
-      timeoutInterval: 30000,
-      sslPinning: {
-        certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
-      }
-    });
-    isUnauthorised = resp && resp.status === 401;
-  } catch (e) {
-    if (!authorizationHeaders || e.status !== 401) {
-      throw e;
-    }
-    isUnauthorised = true;
-  }
-
-  if (authorizationHeaders && isUnauthorised) {
-    let newBearerToken = await createToken();
-    const newConfig = {
-      ...config,
-      headers: {...config.headers, Authorization: `Bearer ${newBearerToken}`}
-    };
-
-    return fetch(url, {
-      ...newConfig,
-      timeoutInterval: 30000,
-      sslPinning: {
-        certs: ['cert1', 'cert2', 'cert3', 'cert4', 'cert5']
-      }
-    });
-  }
-
-  return resp;
-};
-
-async function createToken(): Promise<string> {
-  try {
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
-
-    const req = await request(`${urls.api}/refresh`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${refreshToken}`
-      },
-      body: JSON.stringify({})
-    });
-    if (!req) {
-      throw new Error('Invalid response');
-    }
-    const resp = await req.json();
-
-    if (!resp.token) {
-      throw new Error('Error getting token');
-    }
-
-    await SecureStore.setItemAsync('token', resp.token);
-
-    saveMetric({event: METRIC_TYPES.TOKEN_RENEWAL});
-
-    return resp.token;
-  } catch (err) {
-    // We get a 401 Unauthorized if the refresh token is missing, invalid or has expired
-    // If this is the case, send the user back into onboarding to activate & generate a new one
-    if (err.status === 401 && isMountedRef.current && navigationRef.current) {
-      const currentRouteName = navigationRef.current.getCurrentRoute()?.name;
-      if (currentRouteName !== ScreenNames.ageConfirmation) {
-        navigationRef.current.reset({
-          index: 0,
-          routes: [{name: ScreenNames.ageConfirmation}]
-        });
-      }
-    }
-    return '';
+export class RegisterError extends Error {
+  constructor(message: string, code: number) {
+    super(message);
+    this.name = 'RegisterError';
+    // @ts-ignore
+    this.code = code;
   }
 }
 
@@ -147,18 +44,38 @@ export async function register(): Promise<{
   token: string;
   refreshToken: string;
 }> {
-  const registerResponse = await request(`${urls.api}/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({})
-  });
+  let nonce;
+  try {
+    const registerResponse = await request(`${urls.api}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
 
-  if (!registerResponse) {
-    throw new Error('Invalid response');
+    if (!registerResponse) {
+      throw new Error('Invalid register response');
+    }
+    const registerResult = await registerResponse.json();
+
+    nonce = registerResult.nonce;
+  } catch (err) {
+    console.log('Register error: ', err);
+    if (err.json) {
+      const errBody = await err.json();
+      throw new RegisterError(errBody.message, errBody.code || 1001);
+    }
+    throw new RegisterError(err.message, 1002);
   }
-  const {nonce} = await registerResponse.json();
+
+  let deviceCheckData;
+  try {
+    deviceCheckData = await verify(nonce);
+  } catch (err) {
+    console.log('Device check error: ', err);
+    throw new RegisterError(err.message, 1003);
+  }
 
   try {
     const verifyResponse = await request(`${urls.api}/register`, {
@@ -166,27 +83,25 @@ export async function register(): Promise<{
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({nonce, ...(await verify(nonce))})
+      body: JSON.stringify({nonce, timestamp: Date.now(), ...deviceCheckData})
     });
 
     if (!verifyResponse) {
-      throw new Error('Invalid response');
+      throw new Error('Invalid verify response');
     }
+    const verifyResult = await verifyResponse.json();
 
-    const resp = await verifyResponse.json();
-
-    return resp as {
-      token: string;
-      refreshToken: string;
+    return {
+      token: verifyResult.token,
+      refreshToken: verifyResult.refreshToken
     };
   } catch (err) {
-    if (
-      err.bodyString &&
-      JSON.parse(err.bodyString).message === 'Invalid timestamp'
-    ) {
-      throw new Error('Invalid timestamp');
+    console.log('Register (verify) error:', err);
+    if (err.json) {
+      const errBody = await err.json();
+      throw new RegisterError(errBody.message, errBody.code || 1004);
     }
-    throw new Error('Invalid response');
+    throw new RegisterError(err.message, 1005);
   }
 }
 
@@ -205,48 +120,21 @@ export async function forget(): Promise<boolean> {
   return true;
 }
 
-export enum METRIC_TYPES {
-  CONTACT_UPLOAD = 'CONTACT_UPLOAD',
-  FORGET = 'FORGET',
-  TOKEN_RENEWAL = 'TOKEN_RENEWAL'
-}
-
-export async function saveMetric({event = ''}) {
-  try {
-    const analyticsOptin = await SecureStore.getItemAsync('analyticsConsent');
-    if (!analyticsOptin || (analyticsOptin && analyticsOptin !== 'true')) {
-      return false;
-    }
-    const version = await getVersion();
-    const os = Platform.OS;
-    const req = await request(`${urls.api}/metrics`, {
-      authorizationHeaders: true,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        os,
-        version: version.display,
-        event
-      })
-    });
-
-    return req && req.status === 204;
-  } catch (err) {
-    console.log(err);
-    return false;
-  }
-}
-
 export async function loadSettings() {
   try {
-    const req = await request(`${urls.api}/settings/language`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // Quickfix for iOS crash / SVG flicker on reopening onboarded app
+    await promiseTimeout(1000);
+
+    const req = await requestRetry(
+      `${urls.api}/settings/language`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      },
+      3
+    );
     if (!req) {
       throw new Error('Invalid response');
     }
@@ -264,15 +152,25 @@ export interface StatsData {
   installs: [Date, number][];
 }
 
+const promiseTimeout = (time: number) =>
+  new Promise((ok) => setTimeout(ok, time, time));
+
 export async function loadData(): Promise<StatsData> {
   try {
-    const req = await request(`${urls.api}/stats`, {
-      authorizationHeaders: true,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // Quickfix for iOS crash / SVG flicker on reopening onboarded app
+    await promiseTimeout(1000);
+
+    const req = await requestRetry(
+      `${urls.api}/stats`,
+      {
+        authorizationHeaders: true,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      },
+      3
+    );
 
     if (!req) {
       throw new Error('Invalid response');
@@ -282,5 +180,73 @@ export async function loadData(): Promise<StatsData> {
   } catch (err) {
     console.log('Error loading stats data: ', err);
     throw err;
+  }
+}
+
+interface CreateNoticeResponse {
+  key: string;
+}
+
+export async function createNotice(
+  selfIsolationEndDate: string
+): Promise<CreateNoticeResponse> {
+  try {
+    const reqPost = await request(`${urls.api}/notices/create`, {
+      authorizationHeaders: true,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        selfIsolationEndDate
+      })
+    });
+
+    if (!reqPost) {
+      throw Error('Invalid response');
+    }
+
+    const {nonce} = await reqPost.json();
+
+    const verification = await verify(nonce);
+
+    const reqPut = await request(`${urls.api}/notices/create`, {
+      authorizationHeaders: true,
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        nonce,
+        selfIsolationEndDate,
+        ...verification
+      })
+    });
+
+    return await reqPut.json();
+  } catch (err) {
+    console.log('Error creating notice', err);
+    return err;
+  }
+}
+
+export async function validateNoticeKey(key: string): Promise<Boolean> {
+  try {
+    const reqValidate = await request(`${urls.api}/notices/validate`, {
+      authorizationHeaders: true,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        key
+      })
+    });
+
+    const {valid} = await reqValidate.json();
+    return valid;
+  } catch (err) {
+    console.log('Error validating key', err);
+    return false;
   }
 }

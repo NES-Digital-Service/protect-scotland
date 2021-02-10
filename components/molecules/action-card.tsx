@@ -4,16 +4,19 @@ import {
   View,
   ViewStyle,
   Image,
-  Text,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  AccessibilityProps
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 
+import Text from '../atoms/text';
+import Container from '../atoms/container';
 import {text, colors} from '../../theme';
+import {openBrowserAsync} from '../../utils/web-browser';
+
 const IconNote = require('../../assets/images/icon-note/image.png');
 const IconNoteYellow = require('../../assets/images/icon-note-yellow/image.png');
 
-interface CardProps {
+interface CardProps extends AccessibilityProps {
   style?: ViewStyle;
   content: string;
   link: string;
@@ -24,16 +27,14 @@ const ActionCard: FC<CardProps> = ({
   style,
   content,
   link,
-  inverted = false
+  inverted = false,
+  ...props
 }) => {
-  const handle = () => {
-    WebBrowser.openBrowserAsync(link, {
-      enableBarCollapsing: true,
-      showInRecents: true
-    });
-  };
   return (
-    <TouchableWithoutFeedback onPress={handle}>
+    <TouchableWithoutFeedback
+      onPress={() => openBrowserAsync(link)}
+      accessibilityRole="link"
+      {...props}>
       <View style={[styles.container, style, inverted && styles.inverted]}>
         <View style={[styles.left, inverted && styles.invertedBg]}>
           <Image
@@ -44,11 +45,11 @@ const ActionCard: FC<CardProps> = ({
             resizeMode="contain"
           />
         </View>
-        <View style={styles.flex}>
-          <Text style={[styles.text, inverted && styles.inverted]}>
+        <Container>
+          <Text variant="small" color="darkGrey" style={styles.text}>
             {content}
           </Text>
-        </View>
+        </Container>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -80,16 +81,10 @@ const styles = StyleSheet.create({
   note: {
     alignSelf: 'center'
   },
-  flex: {
-    flex: 1
-  },
   text: {
-    ...text.smallerParagraph,
     paddingLeft: 20,
     paddingVertical: 20,
-    paddingRight: 30,
-    color: colors.darkGrey,
-    fontWeight: 'bold'
+    paddingRight: 30
   }
 });
 

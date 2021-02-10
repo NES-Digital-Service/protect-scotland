@@ -132,10 +132,12 @@ android {
         applicationId "gov.scot.covidtracker"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 45
-        versionName "1.0.3"
+        versionCode 78
+        versionName "1.2.0"
         resConfigs "en"
     }
+
+    ndkVersion "21.3.6528147"
 
     splits {
         abi {
@@ -173,6 +175,10 @@ android {
             zipAlignEnabled enableProguardInReleaseBuilds
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 

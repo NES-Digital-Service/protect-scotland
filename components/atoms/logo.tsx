@@ -1,11 +1,11 @@
 import React, {FC} from 'react';
 import {Image, StyleSheet, View} from 'react-native';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const LogoImage = require('../../assets/images/logo/logo.png');
 
 const Logo: FC = () => {
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, {paddingTop: insets.top + 50}]}>

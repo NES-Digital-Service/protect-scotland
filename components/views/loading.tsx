@@ -2,14 +2,14 @@ import React, {FC} from 'react';
 import {StyleSheet, Image, View, StatusBar} from 'react-native';
 import Spinner from 'react-native-loading-spinner-overlay';
 import {useTranslation} from 'react-i18next';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import Spacing from '../atoms/spacing';
 import {colors} from '../../theme';
 
 export const Loading: FC = () => {
   const {t} = useTranslation();
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
   return (
     <View
       style={[

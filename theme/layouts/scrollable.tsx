@@ -1,24 +1,19 @@
 import React, {FC, MutableRefObject} from 'react';
 import {
   StyleSheet,
-  View,
   ScrollView,
   RefreshControl,
-  ViewStyle
+  ViewStyle,
+  AccessibilityProps
 } from 'react-native';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {SPACING_TOP, SPACING_BOTTOM, SPACING_HORIZONTAL} from './shared';
-
+import Container from '../../components/atoms/container';
 import Spacing from '../../components/atoms/spacing';
-import {Heading} from '../../components/atoms/heading';
-
-import {colors} from '../../theme';
 
 interface LayoutProps {
   toast?: React.ReactNode;
-  heading?: string;
-  headingShort?: boolean;
   backgroundColor?: string;
   refresh?: {
     refreshing: boolean;
@@ -29,29 +24,30 @@ interface LayoutProps {
   children: React.ReactNode;
   contentContainerStyle?: ViewStyle;
   scrollableStyle?: ViewStyle;
+  importantForAccessibility?: AccessibilityProps['importantForAccessibility'];
 }
 
 export const Scrollable: FC<LayoutProps> = ({
   toast,
-  heading,
-  headingShort = false,
   backgroundColor,
   refresh,
   scrollViewRef,
   safeArea = true,
   children,
   contentContainerStyle,
-  scrollableStyle = {}
+  scrollableStyle = {},
+  importantForAccessibility = 'auto'
 }) => {
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
   const refreshControl = refresh && <RefreshControl {...refresh} />;
 
   return (
-    <View style={[styles.container, !!backgroundColor && {backgroundColor}]}>
+    <Container style={[!!backgroundColor && {backgroundColor}]}>
       <ScrollView
         ref={scrollViewRef}
         keyboardShouldPersistTaps="always"
         style={scrollableStyle}
+        importantForAccessibility={importantForAccessibility}
         contentContainerStyle={[
           styles.scrollView,
           {paddingBottom: (safeArea ? insets.bottom : 0) + SPACING_BOTTOM},
@@ -64,20 +60,13 @@ export const Scrollable: FC<LayoutProps> = ({
             <Spacing s={8} />
           </>
         )}
-        {heading && (
-          <Heading lineWidth={headingShort ? 75 : undefined} text={heading} />
-        )}
         {children}
       </ScrollView>
-    </View>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white
-  },
   scrollView: {
     paddingTop: SPACING_TOP,
     paddingHorizontal: SPACING_HORIZONTAL

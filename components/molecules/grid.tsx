@@ -6,10 +6,13 @@ import {
 } from 'react-native-exposure-notification-service';
 
 import {colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {Tile} from './tile';
 import Spacing from '../atoms/spacing';
 import {ScreenNames} from '../../navigation';
 import {useReminder} from '../../providers/reminder';
+import {useSettings} from '../../providers/settings';
+import {hasCurrentExposure} from '../../utils/exposure';
 
 const TracingIcon = require('../../assets/images/tracing/image.png');
 const InactiveTracingIcon = require('../../assets/images/tracing-inactive/image.png');
@@ -20,8 +23,8 @@ const JarIcon = require('../../assets/images/icon-jar/image.png');
 const PausedIcon = require('../../assets/images/grid-paused/image.png');
 
 interface Grid {
-  onboarded: Boolean;
-  stage: Number;
+  onboarded: boolean;
+  stage: number;
   opacity: Animated.Value;
   onboardingCallback?: () => void;
 }
@@ -34,7 +37,8 @@ export const Grid: FC<Grid> = ({
 }) => {
   const {contacts, enabled, status} = useExposure();
   const {paused} = useReminder();
-  const hasContact = contacts && contacts.length > 0;
+  const {isolationDuration} = useSettings();
+  const hasContact = hasCurrentExposure(isolationDuration, contacts);
   const active = enabled && status.state === StatusState.active;
   const fontScale = PixelRatio.getFontScale();
 
@@ -105,7 +109,8 @@ export const Grid: FC<Grid> = ({
             <Tile
               backgroundColor={colors.resultYellow}
               label="dashboard:test:label"
-              invertText
+              hint="dashboard:test:hint"
+              dark
               image={JarIcon}
               minHeight={195}
               link={ScreenNames.tests}
@@ -157,14 +162,15 @@ export const Grid: FC<Grid> = ({
     <Tile
       backgroundColor={colors.resultYellow}
       label="dashboard:test:label"
-      invertText
+      hint="dashboard:test:hint"
+      dark
       image={JarIcon}
       minHeight={195}
       link={ScreenNames.tests}
     />
   );
 
-  if (fontScale <= 1) {
+  if (fontScale <= 1.6) {
     return (
       <View style={styles.container}>
         <View style={styles.column}>
@@ -199,8 +205,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     width: '100%',
-    paddingLeft: 45,
-    paddingRight: 45
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   column: {
     flex: 1,
@@ -208,8 +213,7 @@ const styles = StyleSheet.create({
   },
   largeFontColumn: {
     flexDirection: 'column',
-    paddingLeft: 45,
-    paddingRight: 45
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   spacer: {
     width: 15

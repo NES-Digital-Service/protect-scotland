@@ -5,8 +5,9 @@ import {Dimensions} from 'react-native';
 
 const {width: WINDOW_WIDTH, height: WINDOW_HEIGHT} = Dimensions.get('window');
 
-// The height / width ratio of the illustration
-const IMAGE_RATIO = 1.328125;
+// The height / width ratio of the illustration and logo
+const IMAGE_RATIO = 993 / 1125;
+const LOGO_RATIO = 377 / 1125;
 // If the ratio of the window dimensions are less then this then don't trim the illustration
 const NO_TRIM_RATIO = 0.462;
 // If the ratio of the window dimensions are more then this then use the max trim
@@ -15,12 +16,18 @@ const MAX_TRIM_RATIO = 0.53;
 const MAX_TRIM = -30;
 // The illustration is displayed full width. From this we can calculate the height
 const ILLUSTRATION_HEIGHT = IMAGE_RATIO * WINDOW_WIDTH;
+const LOGO_HEIGHT = LOGO_RATIO * WINDOW_WIDTH;
 
 export function useConfirmationSpace(
   minContentHeight: number
-): {topTrim: number; contentHeight: number; ILLUSTRATION_HEIGHT: number} {
+): {
+  topTrim: number;
+  contentHeight: number;
+  ILLUSTRATION_HEIGHT: number;
+  LOGO_HEIGHT: number;
+} {
   const contentHeight = useMemo(() => {
-    const bottomHeight = WINDOW_HEIGHT - ILLUSTRATION_HEIGHT;
+    const bottomHeight = WINDOW_HEIGHT - ILLUSTRATION_HEIGHT - LOGO_HEIGHT;
     return minContentHeight > bottomHeight ? minContentHeight : bottomHeight;
   }, [minContentHeight]);
 
@@ -36,5 +43,5 @@ export function useConfirmationSpace(
     return trimPercent * MAX_TRIM;
   }, []);
 
-  return {topTrim, contentHeight, ILLUSTRATION_HEIGHT};
+  return {topTrim, contentHeight, ILLUSTRATION_HEIGHT, LOGO_HEIGHT};
 }

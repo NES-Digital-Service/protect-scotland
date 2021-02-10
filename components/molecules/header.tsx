@@ -4,6 +4,7 @@ import {useNavigation} from '@react-navigation/native';
 import {useTranslation} from 'react-i18next';
 
 import {ScreenNames} from '../../navigation';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 
 const IconLogo = require('../../assets/images/icon-logo/image.png');
 const IconMenu = require('../../assets/images/icon-menu/image.png');
@@ -36,8 +37,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 65,
-    paddingLeft: 45,
-    paddingRight: 45,
+    paddingHorizontal: SPACING_HORIZONTAL,
     paddingBottom: 25
   },
   settings: {

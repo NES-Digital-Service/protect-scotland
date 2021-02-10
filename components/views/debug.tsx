@@ -3,62 +3,64 @@ import React, {useState, useEffect, useCallback} from 'react';
 import {
   NativeEventEmitter,
   ScrollView,
-  Text,
   View,
   Alert,
   StyleSheet,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import {format} from 'date-fns';
 import ExposureNotification, {
-  useExposure
+  useExposure,
+  CloseContact
 } from 'react-native-exposure-notification-service';
 
 import Button from '../atoms/button';
-
+import Text from '../atoms/text';
 import Spacing from '../atoms/spacing';
 import {text} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {Back} from '../atoms/back';
 import {Title} from '../atoms/title';
+import * as SecureStore from 'expo-secure-store';
 
+// @ts-ignore
 const emitter = new NativeEventEmitter(ExposureNotification);
 
 export const Debug = () => {
   const exposure = useExposure();
   const [events, setLog] = useState([]);
-  const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState<CloseContact[]>([]);
   const [logData, setLogData] = useState(null);
 
   const loadData = useCallback(async () => {
-    // eslint-disable-next-line no-shadow
-    const contacts = await exposure.getCloseContacts();
-
-    // eslint-disable-next-line no-shadow
-    const logData = await exposure.getLogData();
-    console.log('logdata is', logData);
-    const runDates = logData.lastRun;
+    const apiContacts = await exposure.getCloseContacts();
+    const apiLogData = await exposure.getLogData();
+    console.log('logdata is', apiLogData);
+    const runDates = apiLogData.lastRun;
     if (runDates && typeof runDates === 'string') {
       const dates = runDates
         .replace(/^,/, '')
         .split(',')
         .map((d) => {
-          console.log('DDD', d);
           return format(parseInt(d, 10), 'dd/MM HH:mm:ss');
         });
-      logData.lastRun = dates.join(', ');
+      apiLogData.lastRun = dates.join(', ');
     } else {
-      logData.lastRun ? format(logData.lastRun, 'dd/MM HH:mm:ss') : 'Unknown';
+      apiLogData.lastRun
+        ? format(apiLogData.lastRun, 'dd/MM HH:mm:ss')
+        : 'Unknown';
     }
     // @ts-ignore
-    setLogData(logData);
-    console.log('logdata', logData);
+    setLogData(apiLogData);
+    console.log('apiLogData', apiLogData);
     console.log(
       'has api message',
-      Boolean(logData.lastApiError && logData.lastApiError.length)
+      Boolean(apiLogData.lastApiError && apiLogData.lastApiError.length)
     );
     // @ts-ignore
-    setContacts(contacts);
-    console.log('contacts', contacts);
+    setContacts(apiContacts);
+    console.log('contacts', apiContacts);
   }, [setLogData, setContacts]);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export const Debug = () => {
       emitter.removeListener('exposureEvent', handleEvent);
     } catch (e) {}
     let subscription = emitter.addListener('exposureEvent', handleEvent);
-    await exposure.checkExposure(true, true);
+    await exposure.checkExposure(true);
   };
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export const Debug = () => {
           await exposure.deleteAllData();
           setContacts([]);
           setLogData(null);
+          await SecureStore.deleteItemAsync('createNoticeCertKey');
           exposure.configure(); // reconfigure as delete all deletes sharedprefs on android
         },
         style: 'cancel'
@@ -120,17 +123,16 @@ export const Debug = () => {
     ]);
   };
 
-  const displayContact = (contact: Object) => {
-    const aDay = 24 * 60 * 60 * 1000;
 
-    const contactDate =
-      // @ts-ignore
-      contact.exposureAlertDate - contact.daysSinceLastExposure * aDay;
+  const stopENS = async () => {
+    await exposure.stop();
+  };
 
+  const displayContact = (contact: CloseContact) => {
     const displayData = [
       // @ts-ignore
-      `When: ${format(contact.exposureAlertDate, 'dd/MM HH:mm')}`,
-      `Last: ${format(contactDate, 'dd/MM')}`,
+      `Alert: ${format(contact.exposureAlertDate, 'dd/MM HH:mm')}`,
+      `Contact: ${format(contact.exposureDate, 'dd/MM')}`,
       // @ts-ignore
       `Score: ${contact.maxRiskScore}`,
       // @ts-ignore
@@ -155,15 +157,15 @@ export const Debug = () => {
       );
     }
 
-    // @ts-ignore
-    if (contact.details) {
-      // @ts-ignore
-      contact.details.forEach((d) => {
+    if (contact.windows) {
+      contact.windows.forEach((d) => {
         displayData.push(`When: ${format(d.date, 'dd/MM')}`);
-        displayData.push(`Duration: ${d.duration}`);
-        displayData.push(`Attentuation: ${d.attenuationValue}`);
-        displayData.push(`Risk Score: ${d.totalRiskScore}`);
-        displayData.push(`Attentuation Durations: ${d.attenuationDurations}`);
+        displayData.push(`calibrationConfidence: ${d.calibrationConfidence}`);
+        displayData.push(`diagnosisReportType: ${d.diagnosisReportType}`);
+        displayData.push(`infectiousness: ${d.infectiousness}`);
+        displayData.push(`buckets: ${d.buckets}`);
+        displayData.push(`numScans: ${d.numScans}`);
+        displayData.push(`exceedsThreshold: ${d.exceedsThreshold}`);
       });
     }
 
@@ -176,126 +178,128 @@ export const Debug = () => {
     ]);
   };
 
-  const listContactInfo = (contact: Object) => {
-    const aDay = 24 * 60 * 60 * 1000;
-
-    const contactDate =
-      // @ts-ignore
-      contact.exposureAlertDate - contact.daysSinceLastExposure * aDay;
-    return `When: ${format(
+  const listContactInfo = (contact: CloseContact) => {
+    return `Alert: ${format(
       // @ts-ignore
       contact.exposureAlertDate,
       'dd/MM HH:mm'
-    )}, Last: ${format(contactDate, 'dd/MM')}, Score: ${
+    )}, Contact: ${format(contact.exposureDate, 'dd/MM')}, Score: ${
       // @ts-ignore
       contact.maxRiskScore
       // @ts-ignore
-    }, Keys: ${contact.matchedKeyCount} ${contact.details ? ', *' : ''}`;
+    }, Keys: ${contact.matchedKeyCount} ${contact.windows ? ', *' : ''}`;
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Back />
-      <Title title="viewNames:debug" />
-      <Spacing s={24} />
-      <Button variant="dark" onPress={checkExposure}>
-        Check Exposure
-      </Button>
-      <Spacing s={24} />
-      <Button type="secondary" variant="dark" onPress={deleteAllData}>
-        Delete All Data
-      </Button>
-      <Spacing s={24} />
-      {logData && (
-        <View style={styles.logScroll}>
-          <ScrollView style={styles.contactsScroll}>
-            {
-              // @ts-ignore
-              logData.installedPlayServicesVersion > 0 && (
-                <Text style={text.default}>
-                  Play Services Version:{' '}
-                  {
-                    // @ts-ignore
-                    logData.installedPlayServicesVersion
-                  }
-                </Text>
-              )
-            }
-            {
-              // @ts-ignore
-              logData.nearbyApiSupported === true ||
+    <>
+      <StatusBar barStyle="default" />
+      <ScrollView style={styles.container}>
+        <Back variant="light" />
+        <Spacing s={44} />
+        <Title title="viewNames:debug" />
+        <Spacing s={24} />
+        <Button variant="dark" onPress={checkExposure}>
+          Check Exposure
+        </Button>
+        <Spacing s={24} />
+        <Button type="secondary" variant="dark" onPress={deleteAllData}>
+          Delete All Data
+        </Button>
+        <Button type="secondary" variant="dark" onPress={stopENS}>
+          Stop ENS
+        </Button>
+        <Spacing s={24} />
+        {logData && (
+          <View style={styles.logScroll}>
+            <ScrollView style={styles.contactsScroll}>
+              {
                 // @ts-ignore
-                (logData.nearbyApiSupported === false && (
-                  <Text style={text.default}>
-                    Exposure API Supported:{' '}
+                logData.installedPlayServicesVersion > 0 && (
+                  <Text>
+                    Play Services Version:{' '}
                     {
                       // @ts-ignore
-                      `${logData.nearbyApiSupported}`
+                      logData.installedPlayServicesVersion
                     }
                   </Text>
-                ))
-            }
-            {
-              // @ts-ignore
-              <Text style={text.default}>Last Index: {logData.lastIndex}</Text>
-            }
-            {
-              // @ts-ignore
-              <Text style={text.default}>Last Ran: {logData.lastRun}</Text>
-            }
-            {
-              // @ts-ignore
-              Boolean(logData.lastError && logData.lastError.length) && (
-                <Text style={text.default} selectable={true}>
-                  Last Message:{' '}
-                  {
-                    // @ts-ignore
-                    `${logData.lastError}`
-                  }
-                </Text>
-              )
-            }
-            {
-              // @ts-ignore
-              Boolean(logData.lastApiError && logData.lastApiError.length) && (
-                <Text style={text.default} selectable={true}>
+                )
+              }
+              {
+                // @ts-ignore
+                logData.nearbyApiSupported === true ||
+                  // @ts-ignore
+                  (logData.nearbyApiSupported === false && (
+                    <Text>
+                      Exposure API Supported:{' '}
+                      {
+                        // @ts-ignore
+                        `${logData.nearbyApiSupported}`
+                      }
+                    </Text>
+                  ))
+              }
+              {
+                // @ts-ignore
+                <Text>Last Index: {logData.lastIndex}</Text>
+              }
+              {
+                // @ts-ignore
+                <Text>Last Ran: {logData.lastRun}</Text>
+              }
+              {
+                // @ts-ignore
+                Boolean(logData.lastError && logData.lastError.length) && (
+                  <Text selectable={true}>
+                    Last Message:{' '}
+                    {
+                      // @ts-ignore
+                      `${logData.lastError}`
+                    }
+                  </Text>
+                )
+              }
+              {Boolean(
+                // @ts-ignore
+                logData.lastApiError && logData.lastApiError.length
+              ) && (
+                <Text selectable={true}>
                   Last Exposure API Error:{' '}
                   {
                     // @ts-ignore
                     `${logData.lastApiError}`
                   }
                 </Text>
-              )
-            }
-          </ScrollView>
+              )}
+            </ScrollView>
+          </View>
+        )}
+        <Spacing s={12} />
+        <View style={styles.contacts}>
+          <Text style={styles.title}>Contacts</Text>
         </View>
-      )}
-      <Spacing s={12} />
-      <View style={styles.contacts}>
-        <Text style={styles.title}>Contacts</Text>
-      </View>
-      <ScrollView style={styles.contactsScroll}>
-        {contacts &&
-          contacts.map((c, index) => (
-            <Text
-              key={index}
-              style={[text.default, styles.row]}
-              onPress={() => displayContact(c)}>
-              {listContactInfo(c)}
-            </Text>
-          ))}
+        <ScrollView style={styles.contactsScroll}>
+          {contacts &&
+            contacts.map((c, index) => (
+              <Text
+                key={index}
+                style={[text.default, styles.row]}
+                onPress={() => displayContact(c)}>
+                {listContactInfo(c)}
+              </Text>
+            ))}
+        </ScrollView>
+        <Spacing s={12} />
+        <View style={styles.contacts}>
+          <Text selectable={true} style={styles.title}>
+            Logs
+          </Text>
+        </View>
+        <ScrollView>
+          <Text selectable={true}>{JSON.stringify(events, null, 2)}</Text>
+        </ScrollView>
+        <Spacing s={200} />
       </ScrollView>
-      <Spacing s={12} />
-      <View style={styles.contacts}>
-        <Text selectable={true} style={styles.title}>
-          Logs
-        </Text>
-      </View>
-      <ScrollView>
-        <Text selectable={true}>{JSON.stringify(events, null, 2)}</Text>
-      </ScrollView>
-      <Spacing s={200} />
-    </ScrollView>
+    </>
   );
 };
 
@@ -327,10 +331,8 @@ const styles = StyleSheet.create({
     height: 28
   },
   container: {
-    flex: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45,
+    paddingHorizontal: SPACING_HORIZONTAL,
     paddingBottom: 64
   }
 });

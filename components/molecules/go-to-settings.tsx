@@ -4,7 +4,8 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import {
   useExposure,
   StatusState,
-  StatusType
+  StatusType,
+  AuthorisedStatus
 } from 'react-native-exposure-notification-service';
 
 import Button from '../atoms/button';
@@ -12,16 +13,11 @@ import {useTranslation} from 'react-i18next';
 
 export const goToSettingsAction = async (
   bluetoothDisabled?: boolean,
-  askPermissions?: () => Promise<void>,
-  exposureOff?: boolean
+  askPermissions?: () => Promise<void>
 ) => {
   try {
     if (Platform.OS === 'ios') {
-      if (exposureOff) {
-        Linking.openSettings();
-      } else {
-        Linking.openURL('App-Prefs:');
-      }
+      Linking.openSettings();
     } else {
       bluetoothDisabled
         ? await IntentLauncher.startActivityAsync(
@@ -36,27 +32,28 @@ export const goToSettingsAction = async (
 
 const GoToSettings: FC = () => {
   const {t} = useTranslation();
-  const {status, askPermissions, enabled} = useExposure();
+  const {status, askPermissions, isAuthorised} = useExposure();
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
   const bluetoothDisabled =
-    status.state === 'disabled' && status.type?.includes(StatusType.bluetooth);
+    status.state === StatusState.disabled &&
+    status.type?.includes(StatusType.bluetooth);
 
   const ensUnknown = status.state === StatusState.unknown;
   const ensDisabled = status.state === StatusState.disabled;
-  const exposureOff = !enabled;
+  const notAuthorised = isAuthorised === AuthorisedStatus.unknown;
 
   return (
     <Button
       variant="dark"
       rounded
       onPress={async () =>
-        ensUnknown
+        ensUnknown || notAuthorised
           ? await askPermissions()
-          : goToSettingsAction(bluetoothDisabled, askPermissions, exposureOff)
+          : goToSettingsAction(bluetoothDisabled, askPermissions)
       }
       label={
-        ensUnknown
+        ensUnknown || notAuthorised
           ? t('common:turnOnBtnLabel')
           : ensDisabled
           ? t('common:turnOnBtnLabel')
@@ -65,7 +62,7 @@ const GoToSettings: FC = () => {
           : t('common:goToSettings')
       }
       hint={
-        ensUnknown
+        ensUnknown || notAuthorised
           ? t('common:turnOnBtnHint')
           : ensDisabled
           ? t('common:turnOnBtnHint')
@@ -73,7 +70,7 @@ const GoToSettings: FC = () => {
           ? t('common:turnOnBtnHint')
           : t('common:goToSettingsHint')
       }>
-      {ensUnknown
+      {ensUnknown || notAuthorised
         ? t('common:turnOnBtnLabel')
         : ensDisabled
         ? t('common:turnOnBtnLabel')

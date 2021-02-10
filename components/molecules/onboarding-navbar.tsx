@@ -1,17 +1,13 @@
 import React, {FC} from 'react';
-import {StyleSheet, View, Image} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useTranslation} from 'react-i18next';
 
-import Button from '../atoms/button';
+import Container from '../atoms/container';
 import ProgressBar from '../atoms/progress-bar';
-import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
-import {colors} from '../../theme';
-
-const IconBack = require('../../assets/images/back/image.png');
+import {Back} from '../atoms/back';
 
 interface NavBarProps {
   goBack(): void;
-
   sections: number;
   activeSection: number;
   canGoBack: boolean;
@@ -27,27 +23,18 @@ const NavBar: FC<NavBarProps> = ({
   return (
     <>
       <View style={styles.container}>
-        {canGoBack ? (
-          <Button
-            style={styles.back}
-            onPress={goBack}
-            type="back"
-            hint={t('common:back:hint')}
-            label={t('common:back:label')}>
-            <Image
-              style={styles.iconSize}
-              source={IconBack}
-              accessibilityIgnoresInvertColors={false}
-            />
-          </Button>
-        ) : (
-          <View style={styles.back} />
-        )}
-        <ProgressBar
-          style={styles.progressBar}
-          sections={sections}
-          activeSection={activeSection}
-        />
+        <View style={styles.back}>
+          {canGoBack && <Back onPress={goBack} />}
+        </View>
+        <Container
+          center="vertical"
+          accessible
+          accessibilityHint={t('onboarding:navbar:accessibilityHint', {
+            step: activeSection,
+            total: sections
+          })}>
+          <ProgressBar sections={sections} activeSection={activeSection} />
+        </Container>
       </View>
     </>
   );
@@ -55,27 +42,17 @@ const NavBar: FC<NavBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.primaryPurple,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingTop: 56,
-    paddingBottom: 42,
-    paddingHorizontal: SPACING_HORIZONTAL,
-    alignItems: 'center',
-    position: 'absolute',
-    zIndex: 20
+    paddingHorizontal: 40,
+    paddingBottom: 20,
+    width: '100%'
   },
   back: {
     width: 30,
     height: 30,
     marginRight: 24
-  },
-  progressBar: {
-    flex: 1
-  },
-  iconSize: {
-    width: 16,
-    height: 8
   },
   wave: {
     position: 'absolute',

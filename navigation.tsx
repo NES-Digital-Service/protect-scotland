@@ -8,6 +8,8 @@ export const navigationRef = React.createRef<NavigationContainerRef>();
 export enum ScreenNames {
   dashboard = 'dashboard',
   ageConfirmation = 'ageConfirmation',
+  ageSorting = 'ageSorting',
+  ageUnder = 'ageUnder',
   locationConfirmation = 'locationConfirmation',
   tracing = 'tracing',
   about = 'about',
@@ -23,5 +25,9 @@ export enum ScreenNames {
   leave = 'leave',
   debug = 'debug',
   askPermissions = 'permissions-info',
-  pause = 'pause'
+  pause = 'pause',
+  yourDataModal = 'yourDataModal',
+  testResultModal = 'testResultModal',
+  calculatorModal = 'calculatorModal',
+  sendNotice = 'sendNotice'
 }

@@ -1,71 +1,41 @@
-import React, {FC, useRef, useEffect} from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  Image,
-  TouchableWithoutFeedback,
-  findNodeHandle,
-  AccessibilityInfo
-} from 'react-native';
+import React, {FC} from 'react';
+import {StyleSheet, View, Image, TouchableWithoutFeedback} from 'react-native';
 import {useTranslation} from 'react-i18next';
-import {useIsFocused, useFocusEffect} from '@react-navigation/native';
 
+import Text, {TextProps} from '../atoms/text';
+import Container from '../atoms/container';
 import {ModalClose} from '../atoms/modal-close';
 import Spacing from '../atoms/spacing';
 
-import {text, colors} from '../../theme';
-import {Back} from '../atoms/back';
-import {useApplication} from '../../providers/context';
+import {colors} from '../../theme';
+import {Back, BackProps} from '../atoms/back';
 
 interface ModalHeader {
   icon?: any;
   closeIcon?: React.ReactNode;
-  backIcon?: React.ReactNode;
   heading?: string;
-  color?: string;
+  color?: TextProps['color'];
   back?: boolean;
+  backVariant?: BackProps['variant'];
   type?: 'default' | 'inline';
   left?: boolean;
   action?: () => void;
+  onClosePress?: () => void;
 }
 
 export const ModalHeader: FC<ModalHeader> = ({
   type = 'default',
   icon,
   closeIcon,
-  backIcon,
   heading,
   color,
   back = false,
+  backVariant,
   left = false,
-  action
+  action,
+  onClosePress
 }) => {
   const {t} = useTranslation();
-  const focusStart = useRef<any>();
-  const isFocused = useIsFocused();
-  const {
-    accessibility: {screenReaderEnabled}
-  } = useApplication();
-
-  useEffect(() => {
-    if (screenReaderEnabled && focusStart.current) {
-      const tag = findNodeHandle(focusStart.current);
-      if (tag) {
-        setTimeout(() => AccessibilityInfo.setAccessibilityFocus(tag), 250);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useFocusEffect(() => {
-    if (screenReaderEnabled && isFocused && focusStart.current) {
-      const tag = findNodeHandle(focusStart.current);
-      if (tag) {
-        setTimeout(() => AccessibilityInfo.setAccessibilityFocus(tag), 200);
-      }
-    }
-  });
 
   return (
     <View
@@ -77,33 +47,35 @@ export const ModalHeader: FC<ModalHeader> = ({
         ]}>
         {type === 'default' ? (
           <>
-            {back && <Back icon={backIcon} />}
-            <ModalClose icon={closeIcon} />
+            {back && (
+              <View style={styles.back}>
+                <Back variant={backVariant} />
+              </View>
+            )}
+            <ModalClose icon={closeIcon} onPress={onClosePress} />
           </>
         ) : (
-          <View style={styles.inline}>
-            <View style={[styles.row, styles.header]}>
+          <Container style={styles.inline}>
+            <Container style={styles.row} center="horizontal">
               <View style={styles.dot} />
               <Text
+                variant="h3"
+                color="darkGrey"
                 maxFontSizeMultiplier={3}
-                ref={focusStart}
-                style={styles.title}>
+                accessible>
                 {heading}
               </Text>
-            </View>
+            </Container>
             <ModalClose />
-          </View>
+          </Container>
         )}
       </View>
       {(icon || heading) && type === 'default' && (
-        <View style={styles.content}>
+        <Container center="both" style={styles.row}>
           <Spacing s={20} />
-          <View
-            style={[
-              styles.content,
-              icon ? styles.column : styles.row,
-              left ? styles.left : {}
-            ]}>
+          <Container
+            center="both"
+            style={[styles.row, icon && styles.column, left && styles.left]}>
             {icon && (
               <Image
                 style={styles.icon}
@@ -117,13 +89,15 @@ export const ModalHeader: FC<ModalHeader> = ({
             {action && heading && (
               <TouchableWithoutFeedback onPress={action}>
                 <Text
-                  ref={focusStart}
+                  variant="h1"
+                  align="center"
                   maxFontSizeMultiplier={3}
+                  accessible
+                  color={color}
                   style={[
                     styles.heading,
-                    color ? {color} : {},
-                    !back && !icon ? styles.marginTop : {},
-                    left ? styles.left : {}
+                    !back && !icon && styles.marginTop,
+                    left && styles.left
                   ]}>
                   {t(heading)}
                 </Text>
@@ -131,19 +105,21 @@ export const ModalHeader: FC<ModalHeader> = ({
             )}
             {!action && heading && (
               <Text
-                ref={focusStart}
+                variant="h1"
+                align="center"
+                accessible
                 maxFontSizeMultiplier={3}
+                color={color}
                 style={[
                   styles.heading,
-                  color ? {color} : {},
-                  !back && !icon ? styles.marginTop : {},
-                  left ? styles.left : {}
+                  !back && !icon && styles.marginTop,
+                  left && styles.left
                 ]}>
                 {t(heading)}
               </Text>
             )}
-          </View>
-        </View>
+          </Container>
+        </Container>
       )}
     </View>
   );
@@ -163,11 +139,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row'
   },
-  content: {
-    flex: 1,
-    alignContent: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row'
+  back: {
+    marginBottom: 44
   },
   end: {
     justifyContent: 'flex-end'
@@ -180,17 +153,11 @@ const styles = StyleSheet.create({
     width: 25
   },
   heading: {
-    ...text.h1Heading,
-    textAlign: 'center',
     textAlignVertical: 'center',
     flex: 1,
     flexWrap: 'wrap'
   },
-  header: {
-    alignItems: 'center'
-  },
   inline: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
@@ -200,10 +167,6 @@ const styles = StyleSheet.create({
     width: 15,
     height: 15,
     marginRight: 15
-  },
-  title: {
-    ...text.h3Heading,
-    color: colors.darkGrey
   },
   left: {
     textAlign: 'left',

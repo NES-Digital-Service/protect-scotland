@@ -45,15 +45,13 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: 4,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors.darkPurple,
-    borderRadius: 1
-  },
-  bar: {
-    height: 4,
     borderRadius: 1,
     backgroundColor: colors.white
+  },
+  bar: {
+    flex: 1,
+    borderRadius: 1,
+    backgroundColor: colors.primaryPurple
   }
 });
 

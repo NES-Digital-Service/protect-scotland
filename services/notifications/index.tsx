@@ -44,4 +44,12 @@ PushNotification.configure({
   requestPermissions: false
 });
 
+PushNotification.createChannel(
+  {
+    channelId: 'default',
+    channelName: 'Default channel'
+  },
+  () => {}
+);
+
 export {notificationHooks};

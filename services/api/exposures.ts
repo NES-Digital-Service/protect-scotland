@@ -4,7 +4,8 @@ import {
   CryptoEncoding
 } from 'expo-crypto';
 
-import {request, verify} from '.';
+import {verify} from '.';
+import {request} from './utils';
 
 import {urls} from '../../constants/urls';
 

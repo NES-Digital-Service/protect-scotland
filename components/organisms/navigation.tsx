@@ -14,7 +14,7 @@ import {PushNotification as PN} from 'react-native-push-notification';
 
 import {colors} from '../../theme';
 import {isMountedRef, navigationRef, ScreenNames} from '../../navigation';
-import {useApplication} from '../../providers/context';
+import {useApplication, User} from '../../providers/context';
 import {Onboarding} from '../views/onboarding';
 import {AgeConfirmation} from '../views/age-confirmation';
 import {LocationConfirmation} from '../views/location-confirmation';
@@ -31,24 +31,54 @@ import {Leave} from '../views/leave';
 import {Tests} from '../views/tests';
 import {DataPolicy} from '../views/data-policy';
 import {Debug} from '../views/debug';
-import {ScotlandState} from 'App';
+import {ScotlandState} from '../../App';
 import {Pause} from '../views/pause';
+import {AgeUnder} from '../views/age-under';
+import {YourDataModal} from '../views/onboarding/your-data-modal';
+import {TestResultModal} from '../views/onboarding/test-result-modal';
+import {AgeSorting} from '../views/age-sorting';
 import {notificationHooks} from '../../services/notifications';
+import {GetTranslation, useAgeGroupTranslation} from '../../hooks';
+import {CalculatorModal} from '../views/calculator';
+import {SendNotice} from '../views/sendNotice';
 
 const Stack = createStackNavigator();
 
-const Screens = (t: TFunction, user: string | null) => {
-  const header = () => null;
+const Screens = (t: TFunction, getTranslation: GetTranslation) => {
+  const noHeader = {
+    header: () => null,
+    headerShown: false
+  };
+
   return [
     {
       name: ScreenNames.ageConfirmation,
       component: AgeConfirmation,
       options: {
         title: t('viewNames:age'),
-        header,
+        ...noHeader,
         cardStyle: {
           backgroundColor: colors.primaryPurple
         }
+      }
+    },
+    {
+      name: ScreenNames.ageUnder,
+      component: AgeUnder,
+      options: {
+        title: t('viewNames:ageUnder'),
+        ...noHeader,
+        cardStyle: {
+          backgroundColor: colors.primaryPurple
+        }
+      }
+    },
+    {
+      name: ScreenNames.ageSorting,
+      component: AgeSorting,
+      options: {
+        title: getTranslation('viewNames:ageSorting'),
+        ...noHeader
       }
     },
     {
@@ -56,7 +86,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: LocationConfirmation,
       options: {
         title: t('viewNames:location'),
-        header,
+        ...noHeader,
         cardStyle: {
           backgroundColor: colors.primaryPurple
         }
@@ -67,7 +97,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Onboarding,
       options: {
         title: t('viewNames:onboarding'),
-        header,
+        ...noHeader,
         cardStyle: {}
       }
     },
@@ -76,7 +106,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Onboarding,
       options: {
         title: t('viewNames:onboarding'),
-        header,
+        ...noHeader,
         cardStyle: {}
       }
     },
@@ -84,7 +114,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.dashboard,
       component: Dashboard,
       options: {
-        header,
+        ...noHeader,
         cardStyle: {backgroundColor: colors.white}
       }
     },
@@ -92,7 +122,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.tracing,
       component: Tracing,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:tracing'),
         cardStyle: {backgroundColor: colors.greenBackground},
         cardStyleInterpolator:
@@ -105,7 +135,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.about,
       component: About,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:about'),
         cardStyle: {backgroundColor: colors.notificationYellowTint},
         cardStyleInterpolator:
@@ -118,7 +148,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.community,
       component: Community,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:community'),
         cardStyle: {backgroundColor: colors.lilac},
         cardStyleInterpolator:
@@ -131,7 +161,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.tests,
       component: Tests,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:tests'),
         cardStyle: {backgroundColor: colors.backgroundYellow},
         cardStyleInterpolator:
@@ -144,7 +174,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.testsAdd,
       component: TestsAdd,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:testsAdd'),
         cardStyle: {backgroundColor: colors.backgroundYellow},
         cardStyleInterpolator:
@@ -157,7 +187,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.testsResult,
       component: TestsResult,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:testsResult'),
         cardStyle: {backgroundColor: colors.backgroundYellow},
         cardStyleInterpolator:
@@ -170,7 +200,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.settings,
       component: Settings,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:settings'),
         cardStyle: {backgroundColor: colors.darkPurple},
         cardStyleInterpolator:
@@ -183,7 +213,7 @@ const Screens = (t: TFunction, user: string | null) => {
       name: ScreenNames.closeContact,
       component: CloseContact,
       options: {
-        header,
+        ...noHeader,
         title: t('viewNames:closeContact'),
         cardStyle: {backgroundColor: colors.errorRedTint},
         cardStyleInterpolator:
@@ -197,13 +227,14 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Terms,
       options: {
         title: t('viewNames:terms'),
-        header,
+        ...noHeader,
         cardStyle: {backgroundColor: colors.white},
-        cardStyleInterpolator: user
-          ? CardStyleInterpolators.forHorizontalIOS
-          : CardStyleInterpolators.forRevealFromBottomAndroid,
+        cardStyleInterpolator:
+          Platform.OS === 'ios'
+            ? CardStyleInterpolators.forHorizontalIOS
+            : CardStyleInterpolators.forRevealFromBottomAndroid,
         gestureEnabled: true,
-        gestureDirection: user ? 'horizontal' : 'vertical'
+        gestureDirection: Platform.OS === 'ios' ? 'horizontal' : 'vertical'
       }
     },
     {
@@ -211,7 +242,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: DataPolicy,
       options: {
         title: t('viewNames:dataPolicy'),
-        header,
+        ...noHeader,
         cardStyle: {backgroundColor: colors.white}
       }
     },
@@ -220,7 +251,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Leave,
       options: {
         title: t('viewNames:leave'),
-        header,
+        ...noHeader,
         cardStyle: {backgroundColor: colors.white}
       }
     },
@@ -229,7 +260,7 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Debug,
       options: {
         title: t('viewNames:debug'),
-        header,
+        ...noHeader,
         cardStyle: {backgroundColor: colors.white}
       }
     },
@@ -238,9 +269,65 @@ const Screens = (t: TFunction, user: string | null) => {
       component: Pause,
       options: {
         title: t('viewNames:pause'),
-        header,
+        ...noHeader,
         cardStyle: {},
         cardStyleInterpolator: CardStyleInterpolators.forModalPresentationIOS,
+        gestureEnabled: true,
+        gestureDirection: 'vertical'
+      }
+    },
+    {
+      name: ScreenNames.yourDataModal,
+      component: YourDataModal,
+      options: {
+        title: t('viewNames:yourDataModal'),
+        ...noHeader,
+        cardStyle: {backgroundColor: colors.transparent},
+        cardStyleInterpolator:
+          Platform.OS === 'ios'
+            ? CardStyleInterpolators.forVerticalIOS
+            : CardStyleInterpolators.forRevealFromBottomAndroid,
+        gestureEnabled: true,
+        gestureDirection: 'vertical'
+      }
+    },
+    {
+      name: ScreenNames.testResultModal,
+      component: TestResultModal,
+      options: {
+        title: t('viewNames:testResultModal'),
+        ...noHeader,
+        cardStyle: {backgroundColor: colors.transparent},
+        cardStyleInterpolator:
+          Platform.OS === 'ios'
+            ? CardStyleInterpolators.forVerticalIOS
+            : CardStyleInterpolators.forRevealFromBottomAndroid,
+        gestureEnabled: true,
+        gestureDirection: 'vertical'
+      }
+    },
+    {
+      name: ScreenNames.calculatorModal,
+      component: CalculatorModal,
+      options: {
+        ...noHeader,
+        title: t('viewNames:calculatorModal'),
+        cardStyle: {backgroundColor: colors.backgroundYellow},
+        cardStyleInterpolator:
+          CardStyleInterpolators.forRevealFromBottomAndroid,
+        gestureEnabled: true,
+        gestureDirection: 'vertical'
+      }
+    },
+    {
+      name: ScreenNames.sendNotice,
+      component: SendNotice,
+      options: {
+        ...noHeader,
+        title: t('viewNames:sendNotice'),
+        cardStyle: {backgroundColor: colors.backgroundYellow},
+        cardStyleInterpolator:
+          CardStyleInterpolators.forRevealFromBottomAndroid,
         gestureEnabled: true,
         gestureDirection: 'vertical'
       }
@@ -249,15 +336,13 @@ const Screens = (t: TFunction, user: string | null) => {
 };
 
 interface Navigation {
-  user: string | null;
   notification: PN | null;
-  exposureNotificationClicked: Boolean | null;
-  completedExposureOnboarding: Boolean | null;
+  exposureNotificationClicked: boolean | null;
+  completedExposureOnboarding: boolean | null;
   setState: (value: React.SetStateAction<ScotlandState>) => void;
 }
 
 const Navigation: FC<Navigation> = ({
-  user,
   notification,
   exposureNotificationClicked,
   completedExposureOnboarding,
@@ -265,6 +350,8 @@ const Navigation: FC<Navigation> = ({
 }) => {
   const {t} = useTranslation();
   const {accessibility} = useApplication();
+  const {getTranslation} = useAgeGroupTranslation();
+  const app = useApplication();
 
   useEffect(() => {
     (isMountedRef as MutableRefObject<boolean>).current = true;
@@ -299,10 +386,8 @@ const Navigation: FC<Navigation> = ({
   }, [exposureNotificationClicked]);
 
   const initialScreen =
-    user && completedExposureOnboarding
+    app.user && completedExposureOnboarding
       ? ScreenNames.dashboard
-      : user
-      ? ScreenNames.askPermissions
       : ScreenNames.ageConfirmation;
 
   return (
@@ -320,8 +405,9 @@ const Navigation: FC<Navigation> = ({
           animationEnabled: !accessibility.reduceMotionEnabled
         }}
         initialRouteName={initialScreen}
-        headerMode="float">
-        {Screens(t, user).map((screen, index) => (
+        headerMode="float"
+        mode="modal">
+        {Screens(t, getTranslation).map((screen, index) => (
           // @ts-ignore
           <Stack.Screen {...screen} key={`screen-${index}`} />
         ))}

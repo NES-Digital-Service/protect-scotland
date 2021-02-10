@@ -1,19 +1,18 @@
 import React, {FC} from 'react';
-import {Text, StyleSheet, View, Linking, Platform} from 'react-native';
+import {Linking, Platform} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useExposure} from 'react-native-exposure-notification-service';
 
 import Button from '../../atoms/button';
 import Spacing from '../../atoms/spacing';
-import {text, colors} from '../../../theme';
+import Text from '../../atoms/text';
+import Container from '../../atoms/container';
 
 interface UpgradeNoticeProps {}
 
 const UpgradeNotice: FC<UpgradeNoticeProps> = () => {
   const {t} = useTranslation();
   const exposure = useExposure();
-
-  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
   const checkForUpgradeHandler = async () => {
     try {
@@ -29,42 +28,31 @@ const UpgradeNotice: FC<UpgradeNoticeProps> = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.top}>
-        <Text style={styles.viewText}>
-          {t(`onboarding:upgradeNotice:${platform}:text1`)}
+    <>
+      <Container>
+        <Spacing s={16} />
+        <Text variant="h2" light accessible>
+          {t(`onboarding:upgradeNotice:${Platform.OS}:title`)}
         </Text>
+        <Spacing s={46} />
+        <Text light>{t(`onboarding:upgradeNotice:${Platform.OS}:text1`)}</Text>
         <Spacing s={24} />
-        <Text style={styles.moreText}>
+        <Text variant="h2" light>
           {t('onboarding:upgradeNotice:text2')}
         </Text>
         <Spacing s={24} />
-      </View>
-      <View>
-        <Button
-          onPress={checkForUpgradeHandler}
-          hint={t(
-            `onboarding:upgradeNotice:accessibility:${platform}:upgradeHint`
-          )}
-          label={t(`onboarding:upgradeNotice:${platform}:btnLabel`)}>
-          {t(`onboarding:upgradeNotice:${platform}:btnLabel`)}
-        </Button>
-      </View>
+      </Container>
+      <Button
+        onPress={checkForUpgradeHandler}
+        hint={t(
+          `onboarding:upgradeNotice:accessibility:${Platform.OS}:upgradeHint`
+        )}
+        label={t(`onboarding:upgradeNotice:${Platform.OS}:btnLabel`)}>
+        {t(`onboarding:upgradeNotice:${Platform.OS}:btnLabel`)}
+      </Button>
       {Platform.OS === 'android' && <Spacing s={30} />}
-    </View>
+    </>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {flexGrow: 1},
-  top: {flex: 1},
-  viewText: {
-    ...text.default
-  },
-  moreText: {
-    ...text.h2Heading,
-    color: colors.darkGrey
-  }
-});
 
 export default UpgradeNotice;

@@ -1,18 +1,19 @@
 import React, {FC, useCallback, useEffect, useState} from 'react';
-import {ScrollView, StyleSheet, Text, Platform} from 'react-native';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {ScrollView, StyleSheet, Platform, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {StackNavigationProp} from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import Spinner from 'react-native-loading-spinner-overlay';
 import {useExposure} from 'react-native-exposure-notification-service';
 
+import Text from '../atoms/text';
 import Button from '../atoms/button';
 import Spacing from '../atoms/spacing';
 import Markdown from '../atoms/markdown';
 import {useSettings} from '../../providers/settings';
 import {ModalHeader} from '../molecules/modal-header';
-import {SPACING_BOTTOM} from '../../theme/layouts/shared';
+import {SPACING_BOTTOM, SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {text, colors} from '../../theme';
 import {
   uploadExposureKeys,
@@ -22,8 +23,7 @@ import {
 import {ScreenNames} from '../../navigation';
 import {SingleCodeInput} from '../molecules/single-code-input';
 import {useReminder} from '../../providers/reminder';
-
-const IconBackDark = require('../../assets/images/icon-back/image.png');
+import {useA11yElement} from '../../hooks/a11y-element';
 
 type UploadStatus =
   | 'initialising'
@@ -42,7 +42,7 @@ interface TestsAddProps {
 
 export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
   const {t} = useTranslation();
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
   const exposure = useExposure();
   const {contactTracingNumber} = useSettings();
   const [code, setCode] = useState<Code>('');
@@ -51,6 +51,7 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
   const [uploadToken, setUploadToken] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const {paused} = useReminder();
+  const {focusRef, focusA11yElement} = useA11yElement();
 
   useEffect(() => {
     const readUploadToken = async () => {
@@ -67,6 +68,12 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
     };
     readUploadToken();
   }, []);
+
+  useEffect(() => {
+    if (validationError) {
+      focusA11yElement();
+    }
+  }, [validationError, focusA11yElement]);
 
   const codeValidationHandler = useCallback(async () => {
     const {result, token} = await validateCode(code.toUpperCase());
@@ -115,7 +122,6 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
       if (paused) {
         await exposure.start();
       }
-
       exposureKeys = await exposure.getDiagnosisKeys();
       if (exposureKeys === []) {
         cleanUploadToken();
@@ -131,7 +137,6 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
       }
       return navigation.navigate(ScreenNames.testsResult, {dontShare: true});
     }
-
     try {
       setLoading(true);
       await uploadExposureKeys(uploadToken, exposureKeys);
@@ -144,28 +149,26 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
       navigation.navigate(ScreenNames.testsResult);
     } catch (err) {
       console.log('error uploading exposure keys:', err);
-
       setValidationError(t('tests:uploadError'));
       setStatus('error');
       setLoading(false);
     }
-
     cleanUploadToken();
   };
 
   return (
     <ScrollView
       keyboardShouldPersistTaps="always"
-      style={styles.container}
       contentContainerStyle={[
         styles.contentContainer,
         {paddingBottom: insets.bottom + SPACING_BOTTOM}
       ]}>
       <ModalHeader
+        left
         heading="tests:add:heading"
-        color={colors.darkGrey}
+        color="darkGrey"
         back
-        backIcon={IconBackDark}
+        backVariant="dark"
       />
       <Spacing s={30} />
       <SingleCodeInput
@@ -178,25 +181,38 @@ export const TestsAdd: FC<TestsAddProps> = ({navigation}) => {
       />
       <Spacing s={24} />
       {status === 'uploadOnly' && (
-        <Text style={[styles.center, styles.text]}>
+        <Text variant="leader" color="darkGrey" align="center">
           {t('tests:add:uploadOnlyDescription')}
         </Text>
       )}
 
-      {!!validationError && (
-        <>
-          <Text style={[styles.center, styles.error]}>{validationError}</Text>
-          <Spacing s={24} />
-        </>
-      )}
+      <View ref={focusRef} accessible>
+        {!!validationError && (
+          <Text variant="h2" color="errorRed" align="center">
+            {validationError}
+          </Text>
+        )}
+      </View>
+      {!!validationError && <Spacing s={24} />}
       {status !== 'upload' &&
         status !== 'uploadOnly' &&
         validationError !== t('tests:code:expiredError') && (
-          <Text style={styles.text}>{t('tests:add:description')}</Text>
+          <Markdown
+            markdownStyles={markdownStyles}
+>
+            {t('tests:add:description', {
+              contactTracingNumber,
+              contactTracingNumberTrimmed: contactTracingNumber
+                .split(' ')
+                .join('')
+            })}
+          </Markdown>          
         )}
 
       {validationError === t('tests:code:expiredError') && (
-        <Markdown markdownStyles={markdownStyles}>
+        <Markdown
+          markdownStyles={markdownStyles}
+          accessibleLink={`tel:${contactTracingNumber.split(' ').join('')}`}>
           {t('tests:add:assistanceMessage', {
             contactTracingNumber,
             contactTracingNumberTrimmed: contactTracingNumber
@@ -229,28 +245,9 @@ const markdownStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  center: {
-    alignSelf: 'center',
-    textAlign: 'center'
-  },
-  centerText: {
-    textAlign: 'left'
-  },
-  container: {
-    flex: 1
-  },
   contentContainer: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  text: {
-    ...text.leader,
-    color: colors.darkGrey
-  },
-  error: {
-    color: colors.errorRed,
-    ...text.h2Heading
+    paddingHorizontal: SPACING_HORIZONTAL
   }
 });

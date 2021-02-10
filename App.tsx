@@ -1,8 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {StatusBar, Platform, AppState, Image} from 'react-native';
+import {StatusBar, Platform, AppState, Image, LogBox} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {enableScreens} from 'react-native-screens';
-import NetInfo from '@react-native-community/netinfo';
 import PushNotification, {
   PushNotification as PN
 } from 'react-native-push-notification';
@@ -14,7 +13,6 @@ import {
   KeyServerType
 } from 'react-native-exposure-notification-service';
 import * as SecureStore from 'expo-secure-store';
-import {useTranslation} from 'react-i18next';
 
 import './services/i18n';
 
@@ -31,14 +29,14 @@ import {
 import {Loading} from './components/views/loading';
 import {ReminderProvider} from './providers/reminder';
 import {notificationHooks} from './services/notifications';
+import {useAgeGroupTranslation} from './hooks';
+
+// This hides a warning from react-native-easy-markdown which is still using componentWillReceiveProps in its latest version
+LogBox.ignoreLogs([
+  'Warning: componentWillReceiveProps has been renamed, and is not recommended for use.'
+]);
 
 enableScreens();
-
-try {
-  NetInfo.fetch().then((state) => console.log(state));
-} catch (err) {
-  console.log(err);
-}
 
 function cacheImages(images: (string | number)[]) {
   return images.map((image) => {
@@ -50,18 +48,10 @@ function cacheImages(images: (string | number)[]) {
   });
 }
 
-const ExposureApp = ({
-  notification,
-  exposureNotificationClicked,
-  setState
-}: {
-  notification: PN | null;
-  exposureNotificationClicked: Boolean | null;
-  setState: (value: React.SetStateAction<ScotlandState>) => void;
-}) => {
+const ExposureApp = ({children}: any) => {
   const [authToken, setAuthToken] = useState<string>('');
   const [refreshToken, setRefreshToken] = useState<string>('');
-  const {t} = useTranslation();
+  const {getTranslation} = useAgeGroupTranslation();
 
   const settings = useSettings();
   const application = useApplication();
@@ -103,16 +93,11 @@ const ExposureApp = ({
       analyticsOptin={true}
       keyServerUrl={urls.api}
       keyServerType={KeyServerType.nearform}
-      notificationTitle={t('closeContactNotification:title')}
-      notificationDescription={t('closeContactNotification:description')}>
-      <StatusBar barStyle="default" />
-      <Navigation
-        user={settings.user}
-        notification={notification}
-        exposureNotificationClicked={exposureNotificationClicked}
-        completedExposureOnboarding={application.completedExposureOnboarding}
-        setState={setState}
-      />
+      notificationTitle={getTranslation('closeContactNotification:title')}
+      notificationDescription={getTranslation(
+        'closeContactNotification:description'
+      )}>
+      {children}
     </ExposureProvider>
   );
 };
@@ -121,10 +106,10 @@ export interface ScotlandState {
   loading: boolean;
   token?: {os: string; token: string};
   notification: PN | null;
-  exposureNotificationClicked: Boolean | null;
+  exposureNotificationClicked: boolean | null;
 }
 
-const App = (props: {exposureNotificationClicked: Boolean | null}) => {
+const App = (props: {exposureNotificationClicked: boolean | null}) => {
   const [state, setState] = React.useState<ScotlandState>({
     loading: false,
     notification: null,
@@ -136,9 +121,77 @@ const App = (props: {exposureNotificationClicked: Boolean | null}) => {
       try {
         const imageAssets = cacheImages([
           require('./assets/images/logo/logo.png'),
+
+          // Pre-load view-specific images so they don't flicker on Android on first load:
+
+          // atoms/message
+          require('./assets/images/symptoms/image.png'),
+
+          // molecules/grid
+          require('./assets/images/tracing/image.png'),
+          require('./assets/images/tracing-inactive/image.png'),
+          require('./assets/images/tracing-contact/image.png'),
+          require('./assets/images/icon-comment/image.png'),
+          require('./assets/images/icon-community-white/image.png'),
+          require('./assets/images/icon-jar/image.png'),
+          require('./assets/images/grid-paused/image.png'),
+
+          // views/age-confirmation, views/age-under
+          require('./assets/images/onboarding-logo/image.png'),
           require('./assets/images/onboarding-group/image.png'),
-          require('./assets/images/map/image.png'),
-          require('./assets/images/wave/image.png')
+          require('./assets/images/wave/image.png'),
+
+          // views/age-sorting
+          require('./assets/images/age-sorting-age-group-2-illustration/image.png'),
+          require('./assets/images/age-sorting-age-group-3-illustration/image.png'),
+
+          // views/community
+          require('./assets/images/icon-community-white/image.png'),
+          require('./assets/images/community-illustration/image.png'),
+          require('./assets/images/downloads-illustration/image.png'),
+
+          // views/dashboard
+          require('./assets/images/restrictions/image.png'),
+
+          // views/tests
+          require('./assets/images/icon-jar/image.png'),
+          require('./assets/images/test-illustration/image.png'),
+          require('./assets/images/icon-plus/image.png'),
+
+          // views/tracing
+          require('./assets/images/tracing-active/image.png'),
+          require('./assets/images/icon-tracing-active-big/image.png'),
+          require('./assets/images/icon-tracing-inactive-big/image.png'),
+          require('./assets/images/tracing-illustration/image.png'),
+          require('./assets/images/icon-close-green/image.png'),
+          require('./assets/images/icon-paused/image.png'),
+
+          // views/onboarding/agreement
+          require('./assets/images/icon-opt-out/image.png'),
+
+          // views/onboarding/permissions-info
+          require('./assets/images/permissions-illustration/image.png'),
+
+          // views/onboarding/privacy
+          require('./assets/images/privacy-illustration/image.png'),
+
+          // views/onboarding/test-result-modal
+          require('./assets/images/test-result-modal-illustration/image.png'),
+          require('./assets/images/message/android/image.png'),
+          require('./assets/images/message/ios/image.png'),
+
+          // views/onboarding/test-result
+          require('./assets/images/test-result-illustration/image.png'),
+
+          // views/onboarding/why-use
+          require('./assets/images/why-use-illustration/image.png'),
+
+          // views/onboarding/your-data-modal
+          require('./assets/images/your-data-modal-illustration/image.png'),
+          require('./assets/images/notification/android/age-group-1/image.png'),
+          require('./assets/images/notification/android/age-group-2-3/image.png'),
+          require('./assets/images/notification/ios/age-group-1/image.png'),
+          require('./assets/images/notification/ios/age-group-2-3/image.png')
         ]);
 
         await Font.loadAsync({
@@ -148,6 +201,7 @@ const App = (props: {exposureNotificationClicked: Boolean | null}) => {
           'lato-bold': require('./assets/fonts/Lato-Bold.ttf')
         });
 
+        // @ts-ignore
         await Promise.all([...imageAssets]);
       } catch (e) {
         console.warn(e);
@@ -195,22 +249,24 @@ const App = (props: {exposureNotificationClicked: Boolean | null}) => {
                 return <Loading />;
               }
               return (
-                <ReminderProvider>
                   <ApplicationProvider
                     user={settingsValue.user}
                     onboarded={settingsValue.onboarded}
                     completedExposureOnboarding={
                       settingsValue.completedExposureOnboarding
                     }>
-                    <ExposureApp
-                      notification={state.notification}
-                      exposureNotificationClicked={
-                        state.exposureNotificationClicked
-                      }
-                      setState={setState}
-                    />
+                    <ExposureApp>
+                      <ReminderProvider>
+                        <StatusBar barStyle="default" />
+                        <Navigation
+                          notification={state.notification}
+                          exposureNotificationClicked={state.exposureNotificationClicked}
+                          completedExposureOnboarding={settingsValue.completedExposureOnboarding}
+                          setState={setState}
+                        />
+                      </ReminderProvider>
+                    </ExposureApp>
                   </ApplicationProvider>
-                </ReminderProvider>
               );
             }}
           </SettingsContext.Consumer>

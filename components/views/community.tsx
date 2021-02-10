@@ -2,7 +2,6 @@ import React, {FC} from 'react';
 import {
   ScrollView,
   View,
-  Text,
   Image,
   StyleSheet,
   Share,
@@ -11,12 +10,16 @@ import {
 import {useTranslation} from 'react-i18next';
 import {TFunction} from 'i18next';
 
+import Container from '../atoms/container';
+import Text from '../atoms/text';
 import {ModalHeader} from '../molecules/modal-header';
 import Spacing from '../atoms/spacing';
-import {text, colors} from '../../theme';
+import {colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import Button from '../atoms/button';
 import RoundedBox from '../atoms/rounded-box';
 import {useApplication} from '../../providers/context';
+import {ArrowLink} from '../molecules/arrow-link';
 
 const CommunityIcon = require('../../assets/images/icon-community-white/image.png');
 const CommunityIllustration = require('../../assets/images/community-illustration/image.png');
@@ -53,65 +56,62 @@ export const Community: FC = () => {
       <ModalHeader
         icon={CommunityIcon}
         heading="community:heading"
-        color={colors.white}
+        color="white"
       />
       <Spacing s={34} />
-      <View style={styles.content}>
+      <Container stretch={false} center="horizontal">
         <Image
           source={CommunityIllustration}
-          accessible
           accessibilityIgnoresInvertColors={false}
-          accessibilityHint={t('community:illustrationLabel')}
         />
-        <Spacing s={43} />
-        <Text style={styles.body}>{t('community:body')}</Text>
-        <Spacing s={26} />
-        <Button
-          onPress={() => shareApp(t)}
-          style={styles.button}
-          variant="dark"
-          label={t('common:share')}>
-          {t('common:share')}
-        </Button>
-        <Spacing s={40} />
-        {data && (
-          <RoundedBox style={styles.downloads}>
-            <View style={styles.row}>
-              <View style={styles.textContainer}>
-                <Text style={[styles.text, styles.heading]}>
-                  {t('community:figures')}
-                </Text>
-                <Spacing s={10} />
-                <Text style={[styles.text]}>
-                  {new Intl.NumberFormat('en-GB').format(appRegistrationsCount)}
-                </Text>
-              </View>
-              <Image
-                source={DownloadsIllustration}
-                accessible
-                accessibilityIgnoresInvertColors={false}
-                accessibilityHint={t('community:downloadsLabel')}
-              />
+      </Container>
+      <Spacing s={43} />
+      <Text variant="leader" light align="center">
+        {t('community:body')}
+      </Text>
+      <Spacing s={26} />
+      <Button
+        onPress={() => shareApp(t)}
+        style={styles.button}
+        variant="dark"
+        label={t('common:share')}>
+        {t('common:share')}
+      </Button>
+      <Spacing s={40} />
+      {data && (
+        <RoundedBox style={styles.downloads}>
+          <View style={styles.row}>
+            <View style={styles.textContainer}>
+              <Text variant="h4" light>
+                {t('community:figures')}
+              </Text>
+              <Spacing s={10} />
+              <Text light>
+                {new Intl.NumberFormat('en-GB').format(appRegistrationsCount)}
+              </Text>
             </View>
-          </RoundedBox>
-        )}
-        <Spacing s={20} />
-      </View>
-      <Spacing s={80} />
+            <Image
+              source={DownloadsIllustration}
+              accessibilityIgnoresInvertColors={false}
+            />
+          </View>
+        </RoundedBox>
+      )}
+      <Spacing s={45} />
+      <ArrowLink externalLink={t('links:q')} invert>
+        <Text variant="h4" light>
+          {t('community:link')}
+        </Text>
+      </ArrowLink>
+      <Spacing s={140} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center'
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   row: {
     flexDirection: 'row',
@@ -120,21 +120,9 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%'
   },
-  body: {
-    ...text.leader,
-    color: colors.white,
-    textAlign: 'center'
-  },
   textContainer: {
-    paddingRight: 20,
+    paddingRight: 10,
     flex: 1
-  },
-  heading: {
-    ...text.h4Heading
-  },
-  text: {
-    ...text.default,
-    color: colors.white
   },
   button: {
     width: '100%'

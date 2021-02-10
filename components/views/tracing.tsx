@@ -1,13 +1,13 @@
-import React, {FC} from 'react';
+import React, {FC, useState} from 'react';
 import {
   ScrollView,
   View,
-  Text,
   Image,
   StyleSheet,
   TouchableWithoutFeedback,
   Platform,
-  ImageStyle
+  ImageStyle,
+  ActivityIndicator
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useNavigation} from '@react-navigation/native';
@@ -19,14 +19,19 @@ import {format, isToday, isTomorrow} from 'date-fns';
 
 import {ModalHeader} from '../molecules/modal-header';
 
+import Container from '../atoms/container';
+import Text from '../atoms/text';
 import Spacing from '../atoms/spacing';
 import {text, colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import Markdown from '../atoms/markdown';
 import RoundedBox from '../atoms/rounded-box';
 import {ScreenNames} from '../../navigation';
 import GoToSettings from '../molecules/go-to-settings';
 import Button from '../atoms/button';
 import {useReminder} from '../../providers/reminder';
+import {useSettings} from '../../providers/settings';
+import {hasCurrentExposure} from '../../utils/exposure';
 
 const TracingIcon = require('../../assets/images/tracing-active/image.png');
 const IconTracingActive = require('../../assets/images/icon-tracing-active-big/image.png');
@@ -36,20 +41,23 @@ const CloseIcon = require('../../assets/images/icon-close-green/image.png');
 const IconPaused = require('../../assets/images/icon-paused/image.png');
 
 export const Tracing: FC = () => {
+  const [showSpinner, setShowSpinner] = useState(false);
   const {checked, paused, deleteReminder} = useReminder();
   const {t} = useTranslation();
   const navigation = useNavigation();
   const {enabled, status, contacts, start} = useExposure();
   const tracingActive = enabled && status.state === StatusState.active;
   const pauseDate = new Date(Number(paused));
+  const {isolationDuration} = useSettings();
+  const hasContact = hasCurrentExposure(isolationDuration, contacts);
 
   if (!checked) {
-    return <ScrollView style={styles.container} />;
+    return null;
   }
 
   const renderActive = () => (
     <>
-      <Text style={[styles.heading, styles.active]}>
+      <Text variant="h3" style={styles.active}>
         {t('tracing:status:heading')}
       </Text>
       <Spacing s={20} />
@@ -59,7 +67,7 @@ export const Tracing: FC = () => {
           source={IconTracingActive}
           accessibilityIgnoresInvertColors={false}
         />
-        <Text style={[styles.status, styles.active]}>
+        <Text variant="h1" style={styles.active}>
           {t('tracing:status:active')}
         </Text>
       </View>
@@ -70,7 +78,7 @@ export const Tracing: FC = () => {
 
   const renderInactive = () => (
     <>
-      <Text style={[styles.heading, styles.notActive]}>
+      <Text variant="h3" style={styles.notActive}>
         {t('tracing:status:heading')}
       </Text>
       <Spacing s={20} />
@@ -80,20 +88,18 @@ export const Tracing: FC = () => {
           source={IconTracingInactive}
           accessibilityIgnoresInvertColors={false}
         />
-        <Text
-          style={[styles.status, styles.notActive]}
-          maxFontSizeMultiplier={3}>
+        <Text variant="h1" style={styles.notActive} maxFontSizeMultiplier={3}>
           {t('tracing:status:inactive')}
         </Text>
       </View>
       <Spacing s={20} />
       <Markdown>{t('tracing:inactiveMessage')}</Markdown>
       <Spacing s={20} />
-      <Text style={styles.bold} maxFontSizeMultiplier={3}>
+      <Text bold maxFontSizeMultiplier={3}>
         {t('tracing:turnOn1')}
       </Text>
       <Spacing s={20} />
-      <Text style={styles.bold} maxFontSizeMultiplier={3}>
+      <Text bold maxFontSizeMultiplier={3}>
         {t('tracing:turnOn2')}
       </Text>
       <Spacing s={30} />
@@ -105,7 +111,7 @@ export const Tracing: FC = () => {
 
   const renderPaused = () => (
     <>
-      <Text style={[styles.heading, styles.notActive]}>
+      <Text variant="h3" style={styles.notActive}>
         {t('tracing:status:heading')}
       </Text>
       <Spacing s={20} />
@@ -118,19 +124,13 @@ export const Tracing: FC = () => {
           />
         </View>
         <View>
-          <Text
-            style={[
-              styles.text,
-              styles.heading,
-              styles.status,
-              styles.notActive
-            ]}>
+          <Text variant="h1" style={styles.notActive}>
             {t('tracing:paused:title')}
           </Text>
         </View>
       </View>
       <Spacing s={20} />
-      <Text style={styles.reminder}>
+      <Text bold color="errorRed">
         {t('tracing:paused:reminder')} {format(pauseDate, 'HH:mm')}{' '}
         {isToday(pauseDate)
           ? t('common:today')
@@ -138,17 +138,27 @@ export const Tracing: FC = () => {
           ? t('common:tomorrow')
           : ''}
       </Text>
-      <Markdown markdownStyles={inactiveMarkdownStyles}>
-        {t('tracing:paused:text')}
-      </Markdown>
+      {showSpinner ? (
+        <View>
+          <Spacing s={36} />
+          <ActivityIndicator color={colors.darkGrey} size="large" />
+          <Spacing s={36} />
+        </View>
+      ) : (
+        <Markdown markdownStyles={inactiveMarkdownStyles}>
+          {t('tracing:paused:text')}
+        </Markdown>
+      )}
       <Spacing s={20} />
       <Button
         type="primary"
         variant="dark"
         rounded
-        onPress={() => {
-          start();
+        onPress={async () => {
+          setShowSpinner(true);
+          await start();
           deleteReminder();
+          setShowSpinner(false);
         }}>
         {t('tracing:paused:buttonLabel')}
       </Button>
@@ -161,17 +171,17 @@ export const Tracing: FC = () => {
         icon={TracingIcon}
         closeIcon={CloseIcon}
         heading="tracing:heading"
-        color={colors.validationGreen}
+        color="validationGreen"
       />
       <Spacing s={34} />
-      <View style={styles.content}>
-        {contacts && contacts.length > 0 && (
+      <Container center="horizontal">
+        {hasContact && (
           <>
             <TouchableWithoutFeedback
               onPress={() => navigation.navigate(ScreenNames.closeContact)}>
-              <View style={styles.content}>
+              <Container center="horizontal">
                 <RoundedBox style={styles.notification}>
-                  <Text style={styles.notificationHeading}>
+                  <Text variant="h3" color="errorRed">
                     {t('tracing:notificationTitle')}
                   </Text>
                   <Spacing s={10} />
@@ -179,21 +189,23 @@ export const Tracing: FC = () => {
                     {t('tracing:notificationBody')}
                   </Markdown>
                 </RoundedBox>
-              </View>
+              </Container>
             </TouchableWithoutFeedback>
             <Spacing s={55} />
           </>
         )}
         <Image
           source={TracingIllustration}
-          accessible
-          accessibilityHint={t('tracing:illustrationLabel')}
           accessibilityIgnoresInvertColors={false}
         />
         <Spacing s={43} />
-        <Text style={styles.body}>{t('tracing:body')}</Text>
+        <Text variant="leader" color="darkGrey" align="center">
+          {t('tracing:body')}
+        </Text>
         <Spacing s={30} />
-        <Markdown>{t('tracing:additional', {link: t('links:o')})}</Markdown>
+        <Markdown accessibleLink={t('links:o')}>
+          {t('tracing:additional', {link: t('links:o')})}
+        </Markdown>
         <Spacing s={34} />
         <RoundedBox
           style={tracingActive && !paused ? styles.active : undefined}>
@@ -208,14 +220,14 @@ export const Tracing: FC = () => {
           <Button
             type="secondary"
             rounded
-            textColor={colors.validationGreen}
+            textColor="validationGreen"
             onPress={() => navigation.navigate(ScreenNames.pause)}
             style={styles.button}
             buttonStyle={styles.buttonStyle}>
             I want to pause Tracing
           </Button>
         )}
-      </View>
+      </Container>
       <Spacing s={120} />
     </ScrollView>
   );
@@ -242,32 +254,20 @@ const notificationMarkdownStyles = StyleSheet.create({
   // @ts-ignore
   strong: {
     fontFamily: text.fontFamily.latoBold
+  },
+  block: {
+    marginBottom: 8
   }
 });
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingTop: Platform.OS === 'ios' ? 65 : 30,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  content: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center'
+    paddingHorizontal: SPACING_HORIZONTAL
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center'
-  },
-  body: {
-    ...text.leader,
-    color: colors.darkGrey,
-    textAlign: 'center'
-  },
-  heading: {
-    ...text.h3Heading
   },
   active: {
     color: colors.validationGreen,
@@ -276,14 +276,6 @@ const styles = StyleSheet.create({
   notActive: {
     color: colors.darkGrey,
     borderColor: colors.darkGrey
-  },
-  // @ts-ignore
-  status: {
-    ...text.h1Heading
-  },
-  text: {
-    ...text.smallerParagraph,
-    lineHeight: 20
   },
   moduleImage: {
     marginRight: 11,
@@ -294,14 +286,6 @@ const styles = StyleSheet.create({
     borderColor: colors.errorRed,
     backgroundColor: colors.white
   },
-  // @ts-ignore
-  notificationHeading: {
-    ...text.h3Heading,
-    color: colors.errorRed
-  },
-  bold: {
-    ...text.defaultBold
-  },
   button: {
     width: '100%'
   },
@@ -310,10 +294,6 @@ const styles = StyleSheet.create({
     borderColor: colors.validationGreen,
     borderStyle: 'solid',
     borderWidth: 1
-  },
-  reminder: {
-    ...text.defaultBold,
-    color: colors.errorRed
   },
   underline: {
     textDecorationColor: colors.errorRed,

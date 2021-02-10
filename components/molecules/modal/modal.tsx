@@ -1,12 +1,13 @@
-import React from 'react';
-import {StyleSheet, Text, View, ViewStyle, ScrollView} from 'react-native';
+import React, {Fragment} from 'react';
+import {StyleSheet, View, ViewStyle, ScrollView} from 'react-native';
 import ReactNativeModal, {
   ModalProps as ReactNativeModalProps
 } from 'react-native-modal';
-import {useSafeArea} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import Text from '../../atoms/text';
 import Button, {ButtonTypes, ButtonVariants} from '../../atoms/button';
-import {text, colors} from '../../../theme';
+import {colors} from '../../../theme';
 import {useApplication} from '../../../providers/context';
 import {
   SPACING_BOTTOM,
@@ -46,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({
   closeButton = true,
   ...rest
 }) => {
-  const insets = useSafeArea();
+  const insets = useSafeAreaInsets();
   const {accessibility} = useApplication();
   const isDark = type === 'dark';
 
@@ -75,7 +76,7 @@ const Modal: React.FC<ModalProps> = ({
           )}
           <ScrollView>
             {title && (
-              <Text style={[styles.title, isDark && styles.titleDark]}>
+              <Text variant="leader" color={isDark ? 'white' : 'darkGrey'}>
                 {title}
               </Text>
             )}
@@ -88,12 +89,11 @@ const Modal: React.FC<ModalProps> = ({
                   {label, hint, action, type: buttonType, variant, buttonStyle},
                   index
                 ) => (
-                  <>
+                  <Fragment key={`${label}-${variant}-${index}`}>
                     <Button
                       type={buttonType}
                       variant={variant}
                       label={label}
-                      key={index}
                       onPress={() => {
                         action();
                         onClose();
@@ -103,7 +103,7 @@ const Modal: React.FC<ModalProps> = ({
                       {label}
                     </Button>
                     {index + 1 < buttons.length && <Spacing s={16} />}
-                  </>
+                  </Fragment>
                 )
               )}
             <Spacing s={30} />
@@ -121,20 +121,12 @@ const styles = StyleSheet.create({
     top: 30,
     right: SPACING_HORIZONTAL
   },
-  title: {
-    ...text.leader,
-    color: colors.darkGrey
-  },
-  titleDark: {
-    ...text.leader,
-    color: colors.white
-  },
   bottomModal: {
     justifyContent: 'flex-end',
     margin: 0
   },
   contentContainer: {
-    paddingHorizontal: SPACING_HORIZONTAL,
+    paddingHorizontal: 40,
     paddingBottom: SPACING_BOTTOM,
     backgroundColor: colors.white,
     maxHeight: '60%'

@@ -2,13 +2,9 @@ import React, {FC, useRef, useEffect, useState} from 'react';
 import {
   StyleSheet,
   ScrollView,
-  Text,
-  Image,
   View,
   Animated,
   RefreshControl,
-  findNodeHandle,
-  AccessibilityInfo,
   ActivityIndicator,
   Platform
 } from 'react-native';
@@ -23,16 +19,18 @@ import {
   useExposure,
   StatusState,
   StatusType,
-  Status,
-  CloseContact
+  Status
 } from 'react-native-exposure-notification-service';
 import * as SecureStore from 'expo-secure-store';
-import intervalToDuration from 'date-fns/intervalToDuration';
+import {differenceInCalendarDays} from 'date-fns';
 
+import Container from '../atoms/container';
+import Text from '../atoms/text';
 import {text, colors} from '../../theme';
+import {SPACING_HORIZONTAL} from '../../theme/layouts/shared';
 import {Header} from '../molecules/header';
 import {Grid} from '../molecules/grid';
-import {SymptomCheckerMessage} from '../atoms/symptom-checker';
+import {Message} from '../atoms/message';
 import Spacing from '../atoms/spacing';
 import Markdown from '../atoms/markdown';
 import {ScreenNames} from '../../navigation';
@@ -45,8 +43,12 @@ import {
   PushNotificationsModal
 } from '../organisms/modals';
 import {useSettings} from '../../providers/settings';
-import {useAppState} from '../../hooks/app-state';
+import {useAppState, useVersion, useA11yElement, A11yView} from '../../hooks';
 import {useReminder} from '../../providers/reminder';
+import {NewVersionCard} from '../molecules/new-version-card';
+import {getExposureDate} from '../../utils/exposure';
+
+const RestrictionsImage = require('../../assets/images/restrictions/image.png');
 
 const ANIMATION_DURATION = 300;
 const PROMPT_OFFSET = 1000;
@@ -60,7 +62,7 @@ const getMessage = ({
   paused
 }: {
   onboarded: boolean;
-  enabled: Boolean;
+  enabled: boolean;
   status: Status;
   messages: string[];
   stage: number;
@@ -100,17 +102,22 @@ export const Dashboard: FC = () => {
   const [appState] = useAppState();
   const {checked, paused} = useReminder();
   const navigation = useNavigation();
+  const {onboarded, setContext, loadAppData} = useApplication();
   const {
-    onboarded,
-    setContext,
-    loadAppData,
-    accessibility: {screenReaderEnabled}
-  } = useApplication();
-  const {isolationDuration, isolationCompleteDuration} = useSettings();
+    isolationDuration,
+    isolationCompleteDuration,
+    latestVersion: appLatestVersion
+  } = useSettings();
   const [refreshing, setRefreshing] = useState(false);
-  const focusStart = useRef<any>();
+  const {
+    focusRef: tourFocus,
+    focusA11yElement: focusTourElem
+  } = useA11yElement();
+  const {
+    focusRef: dashboardFocus,
+    focusA11yElement: focusDashboardElem
+  } = useA11yElement();
   const isFocused = useIsFocused();
-
   const messageOpacity = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const gridOpacity = useRef(new Animated.Value(0)).current;
@@ -155,82 +162,74 @@ export const Dashboard: FC = () => {
     default: t('dashboard:message:standard')
   });
 
+  const version = useVersion();
+
+  const resetToNormal = () =>
+    setState((s) => ({
+      ...s,
+      isolationComplete: false,
+      isolationMessage: null
+    }));
+
+  const setExposed = () =>
+    setState((s) => ({
+      ...s,
+      isolationComplete: false,
+      isolationMessage: t('dashboard:exposed')
+    }));
+
+  const setIsolationComplete = () =>
+    setState((s) => ({
+      ...s,
+      isolationComplete: true,
+      isolationMessage: t('dashboard:isolationComplete')
+    }));
+
   const processContactsForMessaging = async () => {
+    let currentStatus = null;
     try {
-      const currentStatus = await SecureStore.getItemAsync('niexposuredate');
-      if (currentStatus) {
-        const duration = intervalToDuration({
-          start: new Date(Number(currentStatus)),
-          end: new Date()
-        });
-
-        const withIsolation = isolationDuration + isolationCompleteDuration;
-
-        if (duration.days && duration.days > withIsolation) {
-          await SecureStore.deleteItemAsync('niexposuredate');
-          return setState((s) => ({
-            ...s,
-            isolationComplete: false,
-            isolationMessage: null
-          }));
-        }
-
-        if (duration.days && duration.days === withIsolation) {
-          return setState((s) => ({
-            ...s,
-            isolationComplete: true,
-            isolationMessage: t('dashboard:isolationComplete')
-          }));
-        }
-
-        if (contacts && contacts.length > 0) {
-          return setState((s) => ({
-            ...s,
-            isolationComplete: false,
-            isolationMessage: t('dashboard:exposed')
-          }));
-        }
-      }
-
-      if (!contacts || contacts.length === 0) {
-        return setState((s) => ({
-          ...s,
-          isolationMessage: null,
-          isolationComplete: false
-        }));
-      }
-
-      const latestExposure = new Date(
-        Math.max.apply(
-          null,
-          contacts.map((e: CloseContact) => {
-            return (new Date(Number(e.exposureAlertDate)) as unknown) as number;
-          })
-        )
-      );
-
-      if (latestExposure) {
-        await SecureStore.setItemAsync(
-          'niexposuredate',
-          String(latestExposure.getTime())
-        );
-
-        setState((s) => ({
-          ...s,
-          isolationComplete: false,
-          isolationMessage: t('dashboard:exposed')
-        }));
-      } else {
-        setState((s) => ({
-          ...s,
-          isolationComplete: false,
-          isolationMessage: null
-        }));
-      }
+      currentStatus = await SecureStore.getItemAsync('niexposuredate');
     } catch (err) {
       await SecureStore.deleteItemAsync('niexposuredate');
       console.log('processContactsForMessaging', err);
     }
+
+    if (currentStatus) {
+      const daysDiff = differenceInCalendarDays(
+        new Date(),
+        new Date(Number(currentStatus))
+      );
+
+      const withIsolation = isolationDuration + isolationCompleteDuration;
+
+      if (daysDiff >= withIsolation) {
+        await SecureStore.deleteItemAsync('niexposuredate');
+        return resetToNormal();
+      }
+
+      if (daysDiff >= isolationDuration && daysDiff < withIsolation) {
+        return setIsolationComplete();
+      }
+
+      if (contacts && contacts.length > 0) {
+        return setExposed();
+      }
+    }
+
+    return resetToNormal();
+  };
+
+  const checkLatestExposure = async () => {
+    const latestExposure = getExposureDate(contacts);
+
+    if (latestExposure) {
+      await SecureStore.setItemAsync(
+        'niexposuredate',
+        String(latestExposure.getTime())
+      );
+    }
+
+    processContactsForMessaging();
   };
 
   const onRefresh = () => {
@@ -249,33 +248,9 @@ export const Dashboard: FC = () => {
   }, [status]);
 
   useEffect(() => {
-    processContactsForMessaging();
+    checkLatestExposure();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contacts, status]);
-
-  const onboardedAnimation = () => {
-    const parallel = [
-      Animated.timing(gridOpacity, {
-        toValue: 1,
-        duration: ANIMATION_DURATION,
-        useNativeDriver: true
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: ANIMATION_DURATION,
-        useNativeDriver: true
-      })
-    ];
-
-    Animated.sequence([
-      Animated.timing(messageOpacity, {
-        toValue: 1,
-        duration: ANIMATION_DURATION,
-        useNativeDriver: true
-      }),
-      Animated.parallel(parallel)
-    ]).start();
-  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -286,21 +261,6 @@ export const Dashboard: FC = () => {
       readPermissions();
     }, [isFocused, appState, readPermissions])
   );
-
-  useEffect(() => {
-    if (onboarded) {
-      setTimeout(() => onboardedAnimation(), 200);
-    } else {
-      setTimeout(() => animateTiles(0), 200);
-    }
-    if (screenReaderEnabled && focusStart.current) {
-      const tag = findNodeHandle(focusStart.current);
-      if (tag) {
-        setTimeout(() => AccessibilityInfo.setAccessibilityFocus(tag), 250);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     setState((s) => ({
@@ -362,59 +322,29 @@ export const Dashboard: FC = () => {
       }));
     }
 
-    setTimeout(() => processContactsForMessaging(), 100);
+    setTimeout(() => checkLatestExposure(), 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, onboarded, status, permissions]);
 
-  useFocusEffect(() => {
-    if (screenReaderEnabled && isFocused && focusStart.current) {
-      const tag = findNodeHandle(focusStart.current);
-      if (tag) {
-        setTimeout(() => AccessibilityInfo.setAccessibilityFocus(tag), 200);
-      }
-    }
-  });
-
-  const animateTiles = (stage: number) => {
-    if (stage > -1) {
-      Animated.parallel([
-        Animated.timing(messageOpacity, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true
-        }),
-        Animated.timing(gridOpacity, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true
-        })
-      ]).start(() => {
-        setState((s) => ({...s, disabled: false}));
-      });
-    } else {
-      Animated.parallel([
-        Animated.timing(messageOpacity, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true
-        }),
-        Animated.timing(contentOpacity, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true
-        }),
-        Animated.timing(gridOpacity, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true
-        })
-      ]).start(() => {
-        AsyncStorage.setItem('scot.onboarded', 'true');
-      });
-    }
+  const animateTourIn = () => {
+    setState((s) => ({...s, disabled: true}));
+    Animated.parallel([
+      Animated.timing(messageOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true
+      }),
+      Animated.timing(gridOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      setState((s) => ({...s, disabled: false}));
+    });
   };
 
-  const handleTour = (stage: number) => {
+  const animateTourOut = () => {
     setState((s) => ({...s, disabled: true}));
     Animated.parallel([
       Animated.timing(messageOpacity, {
@@ -428,30 +358,19 @@ export const Dashboard: FC = () => {
         useNativeDriver: true
       })
     ]).start(() => {
-      if (stage < state.messages.length - 1) {
+      if (state.stage < state.messages.length - 1) {
         setState((s) => ({
           ...s,
-          stage: stage + 1,
+          stage: state.stage + 1,
           current: getMessage({
             onboarded,
             enabled,
             status,
             messages: state.messages,
-            stage: stage + 1
+            stage: state.stage + 1
           })
         }));
-        setTimeout(() => {
-          animateTiles(stage + 1);
-          if (screenReaderEnabled && isFocused && focusStart.current) {
-            const tag = findNodeHandle(focusStart.current);
-            if (tag) {
-              setTimeout(
-                () => AccessibilityInfo.setAccessibilityFocus(tag),
-                200
-              );
-            }
-          }
-        }, 100);
+        animateTourIn();
       } else {
         setState((s) => ({
           ...s,
@@ -459,28 +378,66 @@ export const Dashboard: FC = () => {
           current: s.default
         }));
         setContext({onboarded: true});
-        setTimeout(() => {
-          animateTiles(-1);
-          if (screenReaderEnabled && isFocused && focusStart.current) {
-            const tag = findNodeHandle(focusStart.current);
-            if (tag) {
-              setTimeout(
-                () => AccessibilityInfo.setAccessibilityFocus(tag),
-                200
-              );
-            }
-          }
-        }, 100);
+        animateDashboard();
       }
     });
+  };
+
+  const animateDashboard = () => {
+    setState((s) => ({...s, disabled: true}));
+    Animated.parallel([
+      Animated.timing(messageOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true
+      }),
+      Animated.timing(gridOpacity, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      AsyncStorage.setItem('scot.onboarded', 'true');
+      setState((s) => ({...s, disabled: false}));
+    });
+  };
+
+  useEffect(() => {
+    if (onboarded) {
+      setTimeout(() => animateDashboard(), 200);
+    } else {
+      setTimeout(() => animateTourIn(), 200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!state.disabled) {
+      focusTourElem();
+    }
+  }, [focusTourElem, state.disabled]);
+
+  useEffect(() => {
+    if (onboarded && !state.disabled) {
+      focusDashboardElem();
+    }
+  }, [focusDashboardElem, onboarded, state.disabled]);
+
+  const handleTour = () => {
+    animateTourOut();
   };
 
   if (!initialised || !checked) {
     return (
       <>
-        <View style={[styles.container, styles.center]}>
+        <Container center="both">
           <ActivityIndicator color={colors.darkGrey} size="large" />
-        </View>
+        </Container>
       </>
     );
   }
@@ -489,79 +446,66 @@ export const Dashboard: FC = () => {
     <>
       <Header />
       <ScrollView
-        style={styles.container}
         refreshControl={
           <RefreshControl
             refreshing={onboarded && refreshing}
             onRefresh={onRefresh}
           />
         }>
+        {onboarded &&
+          appLatestVersion &&
+          version &&
+          appLatestVersion !== version?.display && (
+            <View style={blockStyles.block}>
+              <NewVersionCard />
+              <Spacing s={16} />
+            </View>
+          )}
         <Spacing s={onboarded ? 15 : 65} />
         {!onboarded && state.stage > -1 && (
           <>
             <View style={styles.dots}>
-              <Animated.View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      state.stage > -1
-                        ? colors.primaryPurple
-                        : colors.lighterPurple
-                  }
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      state.stage > 0
-                        ? colors.primaryPurple
-                        : colors.lighterPurple
-                  }
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      state.stage > 1
-                        ? colors.primaryPurple
-                        : colors.lighterPurple
-                  }
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      state.stage > 2
-                        ? colors.primaryPurple
-                        : colors.lighterPurple
-                  }
-                ]}
-              />
+              {[-1, 0, 1, 2].map((x) => (
+                <Animated.View
+                  key={`step-${x}`}
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor:
+                        state.stage > x
+                          ? colors.primaryPurple
+                          : colors.lighterPurple
+                    }
+                  ]}
+                />
+              ))}
             </View>
-            <Animated.View ref={focusStart} style={{opacity: messageOpacity}}>
-              <TouchableWithoutFeedback onPress={() => handleTour(state.stage)}>
-                <Markdown markdownStyles={tourStyles}>{state.current}</Markdown>
+            <A11yView
+              ref={tourFocus}
+              accessible
+              accessibilityHint={
+                t('dashboard:tourA11y', {returnObjects: true})[state.stage]
+              }
+            />
+            <Animated.View style={{opacity: messageOpacity}}>
+              <TouchableWithoutFeedback onPress={() => handleTour()}>
+                <Markdown markdownStyles={markDownStyles}>
+                  {state.current}
+                </Markdown>
               </TouchableWithoutFeedback>
+              <Spacing s={30} />
               <ArrowLink
                 onPress={() => {
                   if (!state.disabled) {
-                    handleTour(state.stage);
+                    handleTour();
                   }
                 }}
-                accessibilityLabel={t('dashboard:tourAction')}
                 accessibilityHint={t('dashboard:tourActionHint')}
-                // @ts-ignore
-                textStyle={styles.nextLinkText}
-                containerStyle={styles.nextLink}
-                invert
-              />
+                invert>
+                <Text variant="h3" color="pink" style={styles.nextLink}>
+                  {t('dashboard:tourAction')}
+                </Text>
+              </ArrowLink>
             </Animated.View>
           </>
         )}
@@ -569,16 +513,19 @@ export const Dashboard: FC = () => {
         {onboarded && state.isolationMessage && (
           <>
             <Animated.View
-              ref={focusStart}
               style={{
                 opacity: messageOpacity
               }}>
-              <Markdown
-                markdownStyles={
-                  state.isolationComplete ? tourStyles : tourStylesExposed
-                }>
-                {state.isolationMessage}
-              </Markdown>
+              <View accessible ref={dashboardFocus}>
+                <Markdown
+                  markdownStyles={
+                    state.isolationComplete
+                      ? markDownStyles
+                      : markDownStylesExposed
+                  }>
+                  {state.isolationMessage}
+                </Markdown>
+              </View>
               {!state.isolationComplete && (
                 <>
                   <Spacing s={30} />
@@ -587,36 +534,41 @@ export const Dashboard: FC = () => {
                       navigation.navigate(ScreenNames.closeContact)
                     }
                     accessibilityHint={t('dashboard:exposedAction')}
-                    accessibilityLabel={t('dashboard:exposedAction')}
-                    containerStyle={styles.linkContainer}
-                    textStyle={styles.button}
-                    invert
-                  />
+                    invert>
+                    <Text variant="h3" color="pink" style={styles.nextLink}>
+                      {t('dashboard:tourAction')}
+                    </Text>
+                  </ArrowLink>
                 </>
               )}
               {state.isolationComplete && (
                 <>
                   <Spacing s={20} />
-                  <Text style={styles.supplemental}>
+                  <Text style={blockStyles.block} inline color="darkGrey">
                     {t('dashboard:isolationCompleteSupplemental')}
                   </Text>
                 </>
               )}
             </Animated.View>
             <Spacing s={30} />
-            <Animated.View style={{opacity: contentOpacity}}>
-              <SymptomCheckerMessage />
+            <Animated.View
+              style={[{opacity: contentOpacity}, blockStyles.block]}>
+              <Message />
             </Animated.View>
           </>
         )}
 
         {onboarded && !state.isolationMessage && (
-          <Animated.View ref={focusStart} style={{opacity: messageOpacity}}>
-            <Markdown markdownStyles={tourStyles}>{state.current}</Markdown>
+          <Animated.View style={{opacity: messageOpacity}}>
+            <View accessible ref={dashboardFocus}>
+              <Markdown markdownStyles={markDownStyles}>
+                {state.current}
+              </Markdown>
+            </View>
             {state.stage === -1 && !paused && (
               <>
                 <Spacing s={20} />
-                <Text style={styles.supplemental}>
+                <Text style={blockStyles.block} inline color="darkGrey">
                   {t(`dashboard:message:bluetooth:${Platform.OS}`)}
                 </Text>
               </>
@@ -624,18 +576,9 @@ export const Dashboard: FC = () => {
             {state.stage === -1 && paused && (
               <>
                 <Spacing s={20} />
-                <View style={styles.pausedRow}>
-                  <Image
-                    accessibilityIgnoresInvertColors={false}
-                    width={21}
-                    height={19}
-                    source={require('../../assets/images/warning-icon/image.png')}
-                  />
-                  {/* @ts-ignore */}
-                  <Text style={styles.paused}>
-                    {t('dashboard:message:pausedSupplemental')}
-                  </Text>
-                </View>
+                <Text style={blockStyles.block} inline color="darkGrey">
+                  {t('dashboard:message:pausedSupplemental')}
+                </Text>
               </>
             )}
           </Animated.View>
@@ -645,18 +588,31 @@ export const Dashboard: FC = () => {
           onboarded={onboarded}
           stage={state.stage}
           opacity={gridOpacity}
-          onboardingCallback={() => handleTour(state.stage)}
+          onboardingCallback={() => handleTour()}
         />
         {state.isolationMessage && <Spacing s={34} />}
         {onboarded && !state.isolationMessage && (
-          <Animated.View style={{opacity: contentOpacity}}>
-            <Spacing s={30} />
-            <SymptomCheckerMessage />
-            <Spacing s={45} />
-          </Animated.View>
+          <>
+            <Animated.View
+              style={[{opacity: contentOpacity}, blockStyles.block]}>
+              <Spacing s={30} />
+              <Message />
+              <Spacing s={16} />
+              <Message
+                image={RestrictionsImage}
+                markdown={t('restrictions:message')}
+                accessibilityLabel={t('restrictions:a11y:label')}
+                accessibilityHint={t('restrictions:a11y:hint')}
+                link={t('links:r')}
+              />
+              <Spacing s={45} />
+            </Animated.View>
+          </>
         )}
         {onboarded && (
-          <Text style={styles.thanks}>{t('dashboard:thanks')}</Text>
+          <Text variant="h4" color="primaryPurple" align="center">
+            {t('dashboard:thanks')}
+          </Text>
         )}
         <Spacing s={60} />
       </ScrollView>
@@ -678,7 +634,7 @@ export const Dashboard: FC = () => {
           onClose={() => setState((s) => ({...s, bluetoothPrompt: false}))}
         />
       )}
-      {state.pushNotificationsPrompt && (
+      {checked && !paused && state.pushNotificationsPrompt && (
         <PushNotificationsModal
           isVisible={state.pushNotificationsPrompt}
           onBackdropPress={() =>
@@ -693,79 +649,39 @@ export const Dashboard: FC = () => {
   );
 };
 
-const tourStyles = StyleSheet.create({
+const blockStyles = StyleSheet.create({
   block: {
-    paddingLeft: 45,
-    paddingRight: 45
-  },
+    marginHorizontal: SPACING_HORIZONTAL
+  }
+});
+
+const markDownStyles = StyleSheet.create({
+  ...blockStyles,
   text: {
     ...text.h1Heading,
-    paddingLeft: 45,
-    paddingRight: 45,
+    ...blockStyles.block,
     color: colors.primaryPurple
   }
 });
 
-const tourStylesExposed = StyleSheet.create({
-  ...tourStyles,
+const markDownStylesExposed = StyleSheet.create({
+  ...markDownStyles,
   text: {
-    ...tourStyles.text,
+    ...markDownStyles.text,
     color: colors.errorRed
   }
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  button: {
-    ...text.h3Heading,
-    color: colors.pink
-  },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  linkContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  supplemental: {
-    ...text.default,
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  pausedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 45,
-    paddingRight: 45
-  },
-  paused: {
-    ...text.defaultBold,
-    color: colors.white,
-    marginLeft: 8
-  },
-  nextLinkText: {
-    ...text.h3Heading,
-    color: colors.pink,
-    paddingLeft: 45,
+  nextLink: {
+    paddingLeft: SPACING_HORIZONTAL,
     paddingRight: 5
-  },
-  thanks: {
-    ...text.h4Heading,
-    color: colors.primaryPurple,
-    paddingLeft: 45,
-    paddingRight: 45,
-    textAlign: 'center'
   },
   dots: {
     flexDirection: 'row',
     marginBottom: 30,
     paddingLeft: 46,
-    paddingRight: 45
+    paddingRight: SPACING_HORIZONTAL
   },
   dot: {
     width: 5,
@@ -773,8 +689,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.primaryPurple,
     marginRight: 10
-  },
-  nextLink: {
-    marginTop: 30
   }
 });

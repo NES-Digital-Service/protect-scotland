@@ -8,15 +8,16 @@ import {
   ViewStyle,
   TextStyle,
   TouchableWithoutFeedback,
-  Platform
+  ImageSourcePropType
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 
+import {openBrowserAsync} from '../../utils/web-browser';
 import {colors} from '../../theme';
 import {ScreenNames} from '../../navigation';
 const ArrowIcon = require('../../assets/images/icon-arrow/image.png');
 const ArrowIconPurple = require('../../assets/images/icon-arrow-purple/image.png');
 const ExternalLinkIcon = require('../../assets/images/icon-external-link/image.png');
+const ExternalLinkIconLight = require('../../assets/images/icon-external-link-light/image.png');
 
 interface ArrowLinkProps extends AccessibilityProps {
   navigation?: any;
@@ -25,7 +26,9 @@ interface ArrowLinkProps extends AccessibilityProps {
   containerStyle?: ViewStyle;
   textStyle?: TextStyle;
   invert?: boolean;
+  fullWidth?: boolean;
   onPress?: () => void;
+  icon?: ImageSourcePropType;
 }
 
 export const ArrowLink: FC<ArrowLinkProps> = ({
@@ -37,35 +40,47 @@ export const ArrowLink: FC<ArrowLinkProps> = ({
   accessibilityHint,
   containerStyle = {},
   textStyle = {},
-  invert = false
+  invert,
+  fullWidth = !!externalLink,
+  children,
+  icon,
+  ...props
 }) => {
   const handlePress = () => {
     if (screen && navigation) {
       return navigation.navigate(screen);
     }
     if (externalLink) {
-      WebBrowser.openBrowserAsync(externalLink, {
-        enableBarCollapsing: true,
-        showInRecents: true
-      });
+      return openBrowserAsync(externalLink);
     }
   };
   return (
     <TouchableWithoutFeedback
       onPress={onPress ? onPress : handlePress}
+      accessibilityRole="link"
       accessibilityHint={accessibilityHint}
-      accessibilityLabel={accessibilityLabel}>
+      accessibilityLabel={accessibilityLabel}
+      {...props}>
       <View style={[styles.linkContainer, containerStyle]}>
-        <Text style={[styles.button, textStyle]}>{accessibilityLabel}</Text>
+        <View
+          style={[!fullWidth && styles.inline, fullWidth && styles.fullWidth]}>
+          {children || (
+            <Text style={[styles.text, textStyle]}>{accessibilityLabel}</Text>
+          )}
+        </View>
         <Image
           source={
-            externalLink
-              ? ExternalLinkIcon
+            icon ||
+            (externalLink
+              ? invert
+                ? ExternalLinkIconLight
+                : ExternalLinkIcon
               : invert
               ? ArrowIconPurple
-              : ArrowIcon
+              : ArrowIcon)
           }
           accessibilityIgnoresInvertColors={false}
+          style={styles.icon}
         />
       </View>
     </TouchableWithoutFeedback>
@@ -73,20 +88,16 @@ export const ArrowLink: FC<ArrowLinkProps> = ({
 };
 
 const styles = StyleSheet.create({
-  button: {
-    textAlign: 'left',
-    justifyContent: 'flex-start',
-    color: colors.darkGrey,
-    marginRight: 10,
-    fontWeight: 'bold',
-    ...Platform.select({
-      android: {
-        maxWidth: '80%'
-      }
-    })
-  },
   linkContainer: {
     flexDirection: 'row',
     alignItems: 'center'
-  }
+  },
+  inline: {maxWidth: '80%'},
+  fullWidth: {flex: 1},
+  text: {
+    textAlign: 'left',
+    justifyContent: 'flex-start',
+    color: colors.darkGrey
+  },
+  icon: {marginLeft: 10}
 });

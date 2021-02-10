@@ -1,20 +1,21 @@
 import React, {FC, useState} from 'react';
-import {Text, StyleSheet, View, Image} from 'react-native';
+import {Image, StyleSheet} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {useExposure} from 'react-native-exposure-notification-service';
+import * as SecureStore from 'expo-secure-store';
 
 import Button from '../../atoms/button';
 import Spacing from '../../atoms/spacing';
 import Markdown from '../../atoms/markdown';
-import {text} from '../../../theme';
 import {ScreenNames} from '../../../navigation';
 import {useSettings} from '../../../providers/settings';
 import {useApplication} from '../../../providers/context';
-import * as SecureStore from 'expo-secure-store';
+import Container from '../../atoms/container';
+import Text from '../../atoms/text';
+import {text, colors} from '../../../theme';
 
-const IconBell = require('../../../assets/images/icon-bell/icon-bell.png');
-const IconBt = require('../../../assets/images/icon-bt/icon-bt.png');
+const IllustrationSource = require('../../../assets/images/permissions-illustration/image.png');
 
 interface PermissionInfoProps {
   navigation: StackNavigationProp<any>;
@@ -35,7 +36,14 @@ const PermissionsInfo: FC<PermissionInfoProps> = ({navigation}) => {
       reload();
       await application.setContext({completedExposureOnboarding: true});
 
-      setTimeout(() => navigation.replace(ScreenNames.dashboard), 1000);
+      setTimeout(
+        () =>
+          navigation.reset({
+            index: 0,
+            routes: [{name: ScreenNames.dashboard}]
+          }),
+        1000
+      );
     } catch (e) {
       setDisabled(false);
       console.log("Error opening app's settings", e);
@@ -43,67 +51,39 @@ const PermissionsInfo: FC<PermissionInfoProps> = ({navigation}) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Spacing s={24} />
-      <View style={styles.column}>
-        <View style={styles.row}>
-          <View style={styles.iconWrapper}>
-            <Image source={IconBt} accessibilityIgnoresInvertColors={false} />
-          </View>
-          <View style={styles.column}>
-            <Markdown markdownStyles={markdownStyles}>
-              {t('onboarding:permissionsInfo:view:item1')}
-            </Markdown>
-          </View>
-        </View>
-        <Spacing s={28} />
-        <View style={styles.row}>
-          <View style={styles.iconWrapper}>
-            <Image source={IconBell} accessibilityIgnoresInvertColors={false} />
-          </View>
-          <View style={styles.column}>
-            <Text style={[styles.viewText, styles.bold]}>
-              {t('onboarding:permissionsInfo:view:item2')}
-            </Text>
-          </View>
-        </View>
-      </View>
-      <Spacing s={56} />
+    <>
+      <Container>
+        <Container center="horizontal" stretch={false}>
+          <Image
+            source={IllustrationSource}
+            accessibilityIgnoresInvertColors={false}
+          />
+        </Container>
+        <Spacing s={48} />
+        <Text variant="h2" light accessible>
+          {t('onboarding:permissionsInfo:view:title')}
+        </Text>
+        <Spacing s={24} />
+        <Markdown markdownStyles={markdownStyles}>
+          {t('onboarding:permissionsInfo:view:text')}
+        </Markdown>
+      </Container>
+      <Spacing s={46} />
       <Button
         disabled={disabled}
         onPress={handlePermissions}
-        hint={t('onboarding:permissionsInfo:accessibility:nextHint')}
-        label={t('onboarding:permissionsInfo:accessibility:nextLabel')}>
+        hint={t('common:next:hint')}>
         {t('common:next:label')}
       </Button>
-      <Spacing s={20} />
-    </View>
+      <Spacing s={24} />
+    </>
   );
 };
 
 const markdownStyles = StyleSheet.create({
-  h1: {
-    lineHeight: 20
-  }
-});
-
-const styles = StyleSheet.create({
-  container: {flex: 1},
-  column: {
-    flex: 1,
-    flexDirection: 'column'
-  },
-  row: {flexDirection: 'row'},
-  iconWrapper: {
-    width: 80,
-    paddingLeft: 15,
-    paddingTop: 2
-  },
-  viewText: {
-    ...text.default
-  },
-  bold: {
-    ...text.defaultBold
+  text: {
+    ...text.default,
+    color: colors.white
   }
 });
 

@@ -20,7 +20,7 @@ export const ModalClose: FC<ModalCloseProps> = ({
   const navigation = useNavigation<StackNavigationProp<any>>();
   const {t} = useTranslation();
 
-  const handlePress = () => (onPress ? onPress() : navigation.popToTop());
+  const handlePress = () => (onPress ? onPress() : navigation.pop());
 
   return (
     <TouchableWithoutFeedback onPress={handlePress} accessibilityRole="button">
