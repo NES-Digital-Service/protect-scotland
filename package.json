@@ -43,7 +43,7 @@
     "lodash": "^4.17.20",
     "react": "17.0.1",
     "react-i18next": "^11.7.3",
-    "react-native": "0.63.3",
+    "react-native": "0.64.1",
     "react-native-dotenv": "^2.4.2",
     "react-native-easy-markdown": "^2.0.0",
     "react-native-exposure-notification-service": "^1.2.9",
